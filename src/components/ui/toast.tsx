@@ -8,10 +8,16 @@ type Toast = {
   id: number
   title: string
   description?: string
+  state: "open" | "closing"
+}
+
+type ToastInput = {
+  title: string
+  description?: string
 }
 
 type ToastContextValue = {
-  showToast: (toast: Omit<Toast, "id">) => void
+  showToast: (toast: ToastInput) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -19,17 +25,22 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const removeToast = useCallback((id: number) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
+  const dismissToast = useCallback((id: number) => {
+    setToasts((current) =>
+      current.map((toast) => (toast.id === id ? { ...toast, state: "closing" } : toast)),
+    )
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 240)
   }, [])
 
   const showToast = useCallback(
-    (toast: Omit<Toast, "id">) => {
+    (toast: ToastInput) => {
       const id = Date.now()
-      setToasts((current) => [...current, { ...toast, id }])
-      window.setTimeout(() => removeToast(id), 2600)
+      setToasts((current) => [...current, { ...toast, id, state: "open" }])
+      window.setTimeout(() => dismissToast(id), 2400)
     },
-    [removeToast],
+    [dismissToast],
   )
 
   const value = useMemo(() => ({ showToast }), [showToast])
@@ -41,7 +52,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="liquid-glass pointer-events-auto flex items-center gap-3 rounded-[1.5rem] p-3"
+            data-state={toast.state}
+            className="toast-motion liquid-glass pointer-events-auto flex items-center gap-3 rounded-[1.5rem] p-3"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
               <CheckCircle2 className="h-5 w-5" />
@@ -50,7 +62,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <p className="font-medium">{toast.title}</p>
               {toast.description ? <p className="text-sm text-muted-foreground">{toast.description}</p> : null}
             </div>
-            <Button size="icon" variant="ghost" onClick={() => removeToast(toast.id)} aria-label="关闭">
+            <Button size="icon" variant="ghost" onClick={() => dismissToast(toast.id)} aria-label="关闭">
               <X className="h-4 w-4" />
             </Button>
           </div>
