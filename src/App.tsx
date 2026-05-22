@@ -5,7 +5,6 @@ import { ToastProvider } from "@/components/ui/toast"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { FoodPage } from "@/pages/FoodPage"
 import { FoodImagePage } from "@/pages/FoodImagePage"
-import { FoodLibraryPage } from "@/pages/FoodLibraryPage"
 import { ExerciseLibraryPage } from "@/pages/ExerciseLibraryPage"
 import { MealConfirmPage } from "@/pages/MealConfirmPage"
 import { OnboardingPage } from "@/pages/OnboardingPage"
@@ -35,7 +34,6 @@ export default function App() {
           <Route path="/food" element={<FoodPage />} />
           <Route path="/food/confirm" element={<MealConfirmPage />} />
           <Route path="/food/image" element={<FoodImagePage />} />
-          <Route path="/food/library" element={<FoodLibraryPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/stats/:type" element={<StatsDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />

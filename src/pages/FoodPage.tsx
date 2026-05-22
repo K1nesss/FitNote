@@ -1,24 +1,72 @@
-import { BookOpen, Camera, Sparkles } from "lucide-react"
+import { Camera, Check, Clipboard, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/toast"
 import { recentMeals } from "@/data/mock"
 
-export function FoodPage() {
-  const [text, setText] = useState("一碗米饭、一份鸡胸肉、两个鸡蛋")
-  const estimate = useMemo(() => {
-    const base = text.trim().length > 0 ? 1 : 0
+export type MealDraftItem = {
+  name: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
 
-    return {
-      calories: base * 690,
-      protein: base * 58,
-      carbs: base * 68,
-      fat: base * 19,
+export type MealDraft = {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  items: MealDraftItem[]
+}
+
+export const mealDraftStorageKey = "fitnote.mealDraft"
+
+const aiPrompt = `请根据我提供的饮食文字或图片，估算热量、蛋白质、碳水、脂肪，并只返回合法 JSON，不要解释。
+
+JSON 格式：
+{
+  "calories": 0,
+  "protein": 0,
+  "carbs": 0,
+  "fat": 0,
+  "items": [
+    {
+      "name": "食物名称",
+      "calories": 0,
+      "protein": 0,
+      "carbs": 0,
+      "fat": 0
     }
-  }, [text])
+  ]
+}
+
+单位：calories 为 kcal，protein/carbs/fat 为 g。`
+
+export function FoodPage() {
+  const navigate = useNavigate()
+  const { showToast } = useToast()
+  const [jsonText, setJsonText] = useState("")
+  const parsedMeal = useMemo(() => parseMealJson(jsonText), [jsonText])
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(aiPrompt)
+    showToast({ title: "已复制", description: "粘贴到 AI 应用即可。" })
+  }
+
+  function openConfirm() {
+    if (!parsedMeal) {
+      showToast({ title: "需要 JSON", description: "先粘贴 AI 返回的结果。" })
+      return
+    }
+
+    sessionStorage.setItem(mealDraftStorageKey, JSON.stringify(parsedMeal))
+    navigate("/food/confirm")
+  }
 
   return (
     <div className="space-y-5">
@@ -28,26 +76,25 @@ export function FoodPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="例如：一碗米饭、一份鸡胸肉、两个鸡蛋"
+            value={jsonText}
+            onChange={(event) => setJsonText(event.target.value)}
+            placeholder='{"calories":690,"protein":58,"carbs":68,"fat":19,"items":[]}'
           />
-          <Button asChild className="w-full rounded-3xl" size="lg">
-            <Link to="/food/confirm">
-              <Sparkles className="h-5 w-5" />
-              估算
-            </Link>
+          <p className={`text-sm ${jsonText && !parsedMeal ? "text-red-500" : "text-muted-foreground"}`}>
+            {jsonText ? (parsedMeal ? "JSON 已识别" : "JSON 格式不正确") : "粘贴 AI JSON"}
+          </p>
+          <Button className="w-full rounded-3xl" size="lg" onClick={copyPrompt}>
+            <Clipboard className="h-5 w-5" />
+            提示词
           </Button>
           <div className="grid grid-cols-2 gap-3">
             <Button asChild variant="quiet" className="rounded-3xl" size="lg">
-              <Link to="/food/image" aria-label="图片识别">
+              <Link to="/food/image" aria-label="图片">
                 <Camera className="h-5 w-5" />
               </Link>
             </Button>
-            <Button asChild variant="quiet" className="rounded-3xl" size="lg">
-              <Link to="/food/library" aria-label="食物库">
-                <BookOpen className="h-5 w-5" />
-              </Link>
+            <Button variant="quiet" className="rounded-3xl" size="lg" onClick={openConfirm} aria-label="确认">
+              <Check className="h-5 w-5" />
             </Button>
           </div>
         </CardContent>
@@ -55,28 +102,38 @@ export function FoodPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>估算</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>估算</CardTitle>
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ["热量", estimate.calories, "kcal"],
-              ["蛋白质", estimate.protein, "g"],
-              ["碳水", estimate.carbs, "g"],
-              ["脂肪", estimate.fat, "g"],
-            ].map(([label, value, unit]) => (
-              <div key={label} className="rounded-3xl bg-muted/70 p-4">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="mt-2 text-2xl font-semibold">
-                  {value}
-                  <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
-                </p>
+          {parsedMeal ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ["热量", parsedMeal.calories, "kcal"],
+                  ["蛋白质", parsedMeal.protein, "g"],
+                  ["碳水", parsedMeal.carbs, "g"],
+                  ["脂肪", parsedMeal.fat, "g"],
+                ].map(([label, value, unit]) => (
+                  <div key={label} className="rounded-3xl bg-muted/70 p-4">
+                    <p className="text-sm text-muted-foreground">{label}</p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {value}
+                      <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <Button asChild variant="secondary" className="w-full rounded-3xl">
-            <Link to="/food/confirm">确认</Link>
-          </Button>
+              <Button className="w-full rounded-3xl" size="lg" onClick={openConfirm}>
+                <Check className="h-5 w-5" />
+                确认
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-3xl bg-muted/70 p-5 text-sm text-muted-foreground">等待 AI JSON</div>
+          )}
         </CardContent>
       </Card>
 
@@ -99,4 +156,69 @@ export function FoodPage() {
       </section>
     </div>
   )
+}
+
+export function parseMealJson(value: string): MealDraft | null {
+  const cleanValue = value
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim()
+
+  if (!cleanValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(cleanValue) as Partial<MealDraft>
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .map((item) => normalizeMealItem(item))
+          .filter((item): item is MealDraftItem => Boolean(item))
+      : []
+
+    const totalsFromItems = items.reduce(
+      (acc, item) => ({
+        calories: acc.calories + item.calories,
+        protein: acc.protein + item.protein,
+        carbs: acc.carbs + item.carbs,
+        fat: acc.fat + item.fat,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    )
+
+    const calories = toNumber(parsed.calories, totalsFromItems.calories)
+    const protein = toNumber(parsed.protein, totalsFromItems.protein)
+    const carbs = toNumber(parsed.carbs, totalsFromItems.carbs)
+    const fat = toNumber(parsed.fat, totalsFromItems.fat)
+
+    if (![calories, protein, carbs, fat].every(Number.isFinite)) {
+      return null
+    }
+
+    return { calories, protein, carbs, fat, items }
+  } catch {
+    return null
+  }
+}
+
+function normalizeMealItem(value: unknown): MealDraftItem | null {
+  if (!value || typeof value !== "object") {
+    return null
+  }
+
+  const item = value as Partial<MealDraftItem>
+
+  return {
+    name: typeof item.name === "string" && item.name.trim() ? item.name.trim() : "食物",
+    calories: toNumber(item.calories),
+    protein: toNumber(item.protein),
+    carbs: toNumber(item.carbs),
+    fat: toNumber(item.fat),
+  }
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const number = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(number) ? Math.round(number * 10) / 10 : fallback
 }

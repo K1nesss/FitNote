@@ -1,31 +1,24 @@
 import { Check, Minus, Plus, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import { mealDraftStorageKey, type MealDraft, type MealDraftItem } from "@/pages/FoodPage"
 
-type MealItem = {
+type MealItem = MealDraftItem & {
   id: string
-  name: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
 }
 
-const initialMealItems: MealItem[] = [
-  { id: "rice", name: "米饭", calories: 260, protein: 5, carbs: 58, fat: 1 },
-  { id: "chicken", name: "鸡胸肉", calories: 220, protein: 42, carbs: 0, fat: 5 },
-  { id: "egg", name: "鸡蛋", calories: 210, protein: 11, carbs: 10, fat: 13 },
-]
+const fallbackMealItems: MealItem[] = [{ id: "manual", name: "食物", calories: 0, protein: 0, carbs: 0, fat: 0 }]
 
 export function MealConfirmPage() {
+  const navigate = useNavigate()
   const { showToast } = useToast()
-  const [mealItems, setMealItems] = useState(initialMealItems)
+  const [mealItems, setMealItems] = useState<MealItem[]>(() => loadMealItems())
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 })
   const total = useMemo(
@@ -53,10 +46,16 @@ export function MealConfirmPage() {
       return
     }
 
-    setMealItems((current) => [...current, { ...draft, id: crypto.randomUUID() }])
+    setMealItems((current) => [...current, { ...draft, id: crypto.randomUUID(), name: draft.name.trim() }])
     setDraft({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 })
     setAdding(false)
-    showToast({ title: "已添加", description: "食物已加入本次记录。" })
+    showToast({ title: "已添加" })
+  }
+
+  function saveMeal() {
+    sessionStorage.removeItem(mealDraftStorageKey)
+    showToast({ title: "已保存" })
+    navigate("/food")
   }
 
   return (
@@ -93,12 +92,12 @@ export function MealConfirmPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">食物</h2>
-          <Button size="sm" variant="quiet" aria-label="添加食物" onClick={() => setAdding(true)}>
+          <Button size="sm" variant="quiet" aria-label="添加" onClick={() => setAdding(true)}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
         {mealItems.map((item) => (
-          <Card key={item.name}>
+          <Card key={item.id}>
             <CardContent className="space-y-4 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -108,13 +107,21 @@ export function MealConfirmPage() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  aria-label="删除食物"
+                  aria-label="删除"
                   onClick={() => setMealItems((current) => current.filter((meal) => meal.id !== item.id))}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
+                <label className="space-y-1">
+                  <span className="text-xs text-muted-foreground">kcal</span>
+                  <Input
+                    value={item.calories}
+                    inputMode="decimal"
+                    onChange={(event) => updateItem(item.id, "calories", Number(event.target.value))}
+                  />
+                </label>
                 <label className="space-y-1">
                   <span className="text-xs text-muted-foreground">P</span>
                   <Input
@@ -145,21 +152,19 @@ export function MealConfirmPage() {
         ))}
       </section>
 
-      <Button asChild className="w-full rounded-3xl" size="lg" onClick={() => showToast({ title: "已保存" })}>
-        <Link to="/food">
-          <Check className="h-5 w-5" />
-          保存
-        </Link>
+      <Button className="w-full rounded-3xl" size="lg" onClick={saveMeal}>
+        <Check className="h-5 w-5" />
+        保存
       </Button>
 
-      <Dialog open={adding} title="添加食物" onClose={() => setAdding(false)}>
+      <Dialog open={adding} title="添加" onClose={() => setAdding(false)}>
         <Input
           placeholder="名称"
           value={draft.name}
           onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
         />
         <Input
-          placeholder="热量"
+          placeholder="kcal"
           inputMode="numeric"
           value={draft.calories}
           onChange={(event) => setDraft((current) => ({ ...current, calories: Number(event.target.value) || 0 }))}
@@ -187,4 +192,53 @@ export function MealConfirmPage() {
       </Dialog>
     </div>
   )
+}
+
+function loadMealItems() {
+  const draft = readMealDraft()
+
+  if (!draft) {
+    return fallbackMealItems
+  }
+
+  if (draft.items.length > 0) {
+    return draft.items.map((item, index) => ({ ...item, id: `ai-${index}` }))
+  }
+
+  return [
+    {
+      id: "ai-total",
+      name: "AI 估算",
+      calories: draft.calories,
+      protein: draft.protein,
+      carbs: draft.carbs,
+      fat: draft.fat,
+    },
+  ]
+}
+
+function readMealDraft(): MealDraft | null {
+  try {
+    const rawDraft = sessionStorage.getItem(mealDraftStorageKey)
+
+    if (!rawDraft) {
+      return null
+    }
+
+    const parsed = JSON.parse(rawDraft) as MealDraft
+
+    if (
+      typeof parsed.calories !== "number" ||
+      typeof parsed.protein !== "number" ||
+      typeof parsed.carbs !== "number" ||
+      typeof parsed.fat !== "number" ||
+      !Array.isArray(parsed.items)
+    ) {
+      return null
+    }
+
+    return parsed
+  } catch {
+    return null
+  }
 }
