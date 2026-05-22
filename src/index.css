@@ -4,20 +4,20 @@
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue",
     Arial, sans-serif;
-  --color-background: #f6f0e8;
-  --color-foreground: #1c1c1e;
-  --color-card: #fffaf4;
-  --color-card-foreground: #1c1c1e;
-  --color-muted: #eee7dc;
-  --color-muted-foreground: #7c746b;
-  --color-primary: #202124;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #e8f0ea;
-  --color-secondary-foreground: #1f3428;
-  --color-accent: #e7eef7;
-  --color-accent-foreground: #1d314b;
-  --color-border: #e7ded1;
-  --color-ring: #8d8378;
+  --color-background: oklch(0.965 0.006 245);
+  --color-foreground: oklch(0.18 0.006 245);
+  --color-card: oklch(0.995 0.003 245);
+  --color-card-foreground: oklch(0.18 0.006 245);
+  --color-muted: oklch(0.925 0.008 245);
+  --color-muted-foreground: oklch(0.5 0.012 245);
+  --color-primary: oklch(0.58 0.145 240);
+  --color-primary-foreground: oklch(0.99 0.003 245);
+  --color-secondary: oklch(0.91 0.012 245);
+  --color-secondary-foreground: oklch(0.25 0.012 245);
+  --color-accent: oklch(0.88 0.045 235);
+  --color-accent-foreground: oklch(0.24 0.055 240);
+  --color-border: oklch(0.87 0.008 245);
+  --color-ring: oklch(0.58 0.145 240);
   --radius-xl: 1.25rem;
   --radius-2xl: 1.5rem;
   --radius-3xl: 1.75rem;
@@ -32,11 +32,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(145deg, rgba(231, 238, 247, 0.48) 0 12%, transparent 12% 34%, rgba(232, 240, 234, 0.48) 34% 48%, transparent 48% 100%),
-    linear-gradient(28deg, rgba(255, 255, 255, 0.56) 0 18%, transparent 18% 42%, rgba(238, 235, 228, 0.48) 42% 58%, transparent 58% 100%),
-    radial-gradient(circle at 50% -18%, rgba(255, 255, 255, 0.96), transparent 34rem),
-    linear-gradient(180deg, #f6f0e8 0%, #fbf8f1 56%, #f6f0e8 100%);
+  background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -72,38 +68,24 @@ textarea {
 .liquid-glass {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.74);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.24) 46%, rgba(255, 255, 255, 0.62) 100%),
-    linear-gradient(160deg, rgba(231, 238, 247, 0.38), rgba(232, 240, 234, 0.24)),
-    rgba(255, 253, 249, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(249, 252, 255, 0.62);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.92),
-    inset 0 -14px 28px rgba(255, 255, 255, 0.18),
-    inset 0 0 18px rgba(255, 255, 255, 0.24),
-    0 22px 60px rgba(47, 39, 25, 0.13);
-  backdrop-filter: blur(30px) saturate(1.9) contrast(1.04);
-  -webkit-backdrop-filter: blur(30px) saturate(1.9) contrast(1.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    inset 0 -1px 0 rgba(65, 118, 157, 0.08),
+    0 12px 32px rgba(37, 66, 88, 0.1);
+  backdrop-filter: blur(30px) saturate(1.35);
+  -webkit-backdrop-filter: blur(30px) saturate(1.35);
   transform: translateZ(0);
 }
 
 .liquid-glass::before {
-  content: "";
-  position: absolute;
-  inset: -45% -20%;
-  pointer-events: none;
-  background:
-    linear-gradient(105deg, transparent 28%, rgba(255, 255, 255, 0.52) 46%, transparent 64%),
-    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.58), transparent 54%);
-  opacity: 0.58;
-  transform: translateX(-28%) rotate(8deg);
-  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 300ms ease;
+  content: none;
 }
 
 .liquid-glass:hover::before,
 .liquid-glass:focus-within::before {
-  opacity: 0.78;
-  transform: translateX(18%) rotate(8deg);
+  content: none;
 }
 
 .liquid-glass::after {
@@ -113,18 +95,20 @@ textarea {
   pointer-events: none;
   border-radius: inherit;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
-    inset 1px 1px 0 rgba(255, 255, 255, 0.72),
-    inset -1px -1px 0 rgba(75, 67, 55, 0.08);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(41, 86, 118, 0.06);
 }
 
 .soft-surface {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 253, 249, 0.68)),
-    rgba(255, 253, 249, 0.78);
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.78);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    0 18px 46px rgba(80, 67, 46, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 1px 1px rgba(37, 66, 88, 0.03),
+    0 10px 24px rgba(37, 66, 88, 0.06);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
   transition:
     transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -159,35 +143,23 @@ textarea {
 .liquid-control {
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.3)),
-    rgba(255, 253, 249, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  background: rgba(248, 252, 255, 0.58);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.86),
-    inset 0 -10px 18px rgba(255, 255, 255, 0.16),
-    0 10px 24px rgba(47, 39, 25, 0.1);
-  backdrop-filter: blur(24px) saturate(1.8);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 8px 20px rgba(37, 66, 88, 0.08);
+  backdrop-filter: blur(24px) saturate(1.28);
+  -webkit-backdrop-filter: blur(24px) saturate(1.28);
 }
 
 .liquid-control::before {
-  content: "";
-  position: absolute;
-  inset: -60% -35%;
-  pointer-events: none;
-  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, 0.64) 49%, transparent 66%);
-  opacity: 0;
-  transform: translateX(-34%) rotate(8deg);
-  transition:
-    opacity 260ms ease,
-    transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  content: none;
 }
 
 .liquid-control:hover::before,
 .liquid-control:focus-visible::before,
 .liquid-control[aria-current="page"]::before {
-  opacity: 0.72;
-  transform: translateX(22%) rotate(8deg);
+  content: none;
 }
 
 .liquid-control > * {
@@ -197,21 +169,18 @@ textarea {
 
 .nav-glass {
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    inset 0 -18px 30px rgba(255, 255, 255, 0.18),
-    0 18px 44px rgba(47, 39, 25, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 18px 42px rgba(37, 66, 88, 0.13);
 }
 
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.995);
-    filter: blur(4px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
+    transform: translateY(0);
   }
 }
 
@@ -229,8 +198,8 @@ textarea {
 @keyframes toast-in {
   from {
     opacity: 0;
-    filter: blur(8px);
-    transform: translate3d(0, -14px, 0) scale(0.96);
+    filter: blur(2px);
+    transform: translate3d(0, -12px, 0) scale(0.98);
   }
   to {
     opacity: 1;
@@ -247,8 +216,8 @@ textarea {
   }
   to {
     opacity: 0;
-    filter: blur(6px);
-    transform: translate3d(0, -8px, 0) scale(0.98);
+    filter: blur(2px);
+    transform: translate3d(0, -8px, 0) scale(0.99);
   }
 }
 

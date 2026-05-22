@@ -10,12 +10,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-[0_14px_34px_rgba(32,33,36,0.18)] hover:bg-primary/90 hover:shadow-[0_18px_42px_rgba(32,33,36,0.22)]",
+          "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(23,105,166,0.18)] hover:bg-primary/90",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-[0_14px_34px_rgba(31,52,40,0.12)] hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         quiet:
-          "liquid-glass text-foreground hover:bg-white/55",
-        ghost: "hover:bg-white/42 text-muted-foreground hover:text-foreground",
+          "liquid-glass text-foreground hover:bg-white/60",
+        ghost: "text-muted-foreground hover:bg-white/54 hover:text-foreground",
       },
       size: {
         default: "h-11 px-5",
