@@ -1,0 +1,8 @@
+name = "fitnote"
+main = "worker/index.ts"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fitnote-db"
+database_id = "local-fitnote-db"
