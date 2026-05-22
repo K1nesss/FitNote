@@ -1,5 +1,6 @@
 export interface Env {
-  DB: D1Database
+  ASSETS: Fetcher
+  DB?: D1Database
   AI_API_KEY?: string
 }
 
@@ -8,7 +9,7 @@ const jsonHeaders = {
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
     if (url.pathname === "/api/health") {
@@ -32,6 +33,10 @@ export default {
       )
     }
 
-    return Response.json({ error: "Not found" }, { status: 404, headers: jsonHeaders })
+    if (url.pathname.startsWith("/api/")) {
+      return Response.json({ error: "Not found" }, { status: 404, headers: jsonHeaders })
+    }
+
+    return env.ASSETS.fetch(request)
   },
 } satisfies ExportedHandler<Env>
