@@ -14,8 +14,8 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         quiet:
-          "liquid-glass text-foreground hover:bg-white/60",
-        ghost: "text-muted-foreground hover:bg-white/54 hover:text-foreground",
+          "liquid-glass text-foreground hover:bg-card/60",
+        ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
       },
       size: {
         default: "h-11 px-5",

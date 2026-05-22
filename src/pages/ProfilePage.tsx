@@ -4,16 +4,19 @@ import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTheme } from "@/lib/theme"
 
 const settings = [
   { label: "目标", value: "2200 kcal", icon: UserRound, href: "/profile/settings/goals" },
   { label: "提醒", value: "开启", icon: Bell, href: "/profile/settings/reminders" },
-  { label: "外观", value: "跟随系统", icon: Moon, href: "/profile/settings/appearance" },
+  { label: "外观", value: "theme", icon: Moon, href: "/profile/settings/appearance" },
   { label: "数据", value: "本地 D1", icon: Database, href: "/profile/settings/data" },
   { label: "隐私", value: "仅自己", icon: Shield, href: "/profile/settings/privacy" },
 ]
 
 export function ProfilePage() {
+  const { theme } = useTheme()
+
   return (
     <div className="space-y-5">
       <Card>
@@ -51,7 +54,7 @@ export function ProfilePage() {
                 <span className="font-medium">{item.label}</span>
               </span>
               <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-                {item.value}
+                {item.value === "theme" ? (theme === "dark" ? "深色" : "浅色") : item.value}
                 <ChevronRight className="h-4 w-4" />
               </span>
             </Link>

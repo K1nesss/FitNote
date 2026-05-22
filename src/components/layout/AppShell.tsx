@@ -59,37 +59,36 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
 
-        {showBottomNav ? <nav className="bottom-nav-safe fixed inset-x-0 bottom-0 z-30 mx-auto max-w-3xl px-4">
-          <div className="liquid-glass nav-glass relative grid h-[4.5rem] grid-cols-4 items-center rounded-[2.15rem] p-2">
-            {activeIndex >= 0 ? (
-              <div
-                className="pointer-events-none absolute inset-2 z-0 grid grid-cols-4"
-                aria-hidden="true"
-              >
-                <div
-                  className="liquid-control col-start-1 h-14 rounded-[1.65rem] transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
-                  style={{ transform: `translateX(${activeIndex * 100}%)` }}
-                />
-              </div>
-            ) : null}
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "relative z-10 mx-auto flex h-14 w-14 items-center justify-center rounded-[1.65rem] text-muted-foreground opacity-80 transition-all duration-500 ease-out hover:opacity-100 active:scale-95",
-                    isActive && "scale-105 text-foreground opacity-100",
-                  )
-                }
-              >
-                <item.icon className="h-5 w-5" aria-hidden="true" />
-                <span className="sr-only">{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
-        </nav> : null}
+        {showBottomNav ? (
+          <nav className="bottom-nav-safe fixed inset-x-0 bottom-0 z-30 mx-auto max-w-3xl px-4">
+            <div className="liquid-glass nav-glass relative grid h-[4.5rem] grid-cols-4 items-center rounded-[2.15rem] p-2">
+              {activeIndex >= 0 ? (
+                <div className="pointer-events-none absolute inset-2 z-0 grid grid-cols-4" aria-hidden="true">
+                  <div
+                    className="liquid-control col-start-1 h-14 rounded-[1.65rem] transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                    style={{ transform: `translateX(${activeIndex * 100}%)` }}
+                  />
+                </div>
+              ) : null}
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  className={({ isActive }) =>
+                    cn(
+                      "relative z-10 mx-auto flex h-14 w-14 items-center justify-center rounded-[1.65rem] text-muted-foreground opacity-80 transition-all duration-500 ease-out hover:opacity-100 active:scale-95",
+                      isActive && "scale-105 text-foreground opacity-100",
+                    )
+                  }
+                >
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
+                  <span className="sr-only">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </nav>
+        ) : null}
       </div>
     </div>
   )

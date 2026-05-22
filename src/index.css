@@ -4,23 +4,67 @@
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue",
     Arial, sans-serif;
-  --color-background: oklch(0.965 0.006 245);
-  --color-foreground: oklch(0.18 0.006 245);
-  --color-card: oklch(0.995 0.003 245);
-  --color-card-foreground: oklch(0.18 0.006 245);
-  --color-muted: oklch(0.925 0.008 245);
-  --color-muted-foreground: oklch(0.5 0.012 245);
-  --color-primary: oklch(0.58 0.145 240);
-  --color-primary-foreground: oklch(0.99 0.003 245);
-  --color-secondary: oklch(0.91 0.012 245);
-  --color-secondary-foreground: oklch(0.25 0.012 245);
-  --color-accent: oklch(0.88 0.045 235);
-  --color-accent-foreground: oklch(0.24 0.055 240);
-  --color-border: oklch(0.87 0.008 245);
-  --color-ring: oklch(0.58 0.145 240);
+  --color-background: oklch(0.972 0.018 205);
+  --color-foreground: oklch(0.18 0.016 218);
+  --color-card: oklch(0.993 0.008 200);
+  --color-card-foreground: oklch(0.18 0.016 218);
+  --color-muted: oklch(0.918 0.025 205);
+  --color-muted-foreground: oklch(0.49 0.03 218);
+  --color-primary: oklch(0.6 0.125 213);
+  --color-primary-foreground: oklch(0.99 0.006 200);
+  --color-secondary: oklch(0.91 0.035 198);
+  --color-secondary-foreground: oklch(0.25 0.04 215);
+  --color-accent: oklch(0.86 0.075 190);
+  --color-accent-foreground: oklch(0.22 0.055 215);
+  --color-border: oklch(0.86 0.028 205);
+  --color-ring: oklch(0.6 0.125 213);
   --radius-xl: 1.25rem;
   --radius-2xl: 1.5rem;
   --radius-3xl: 1.75rem;
+}
+
+:root {
+  color-scheme: light;
+  --app-background: linear-gradient(180deg, oklch(0.985 0.02 195) 0%, oklch(0.968 0.018 205) 54%, oklch(0.976 0.012 202) 100%);
+  --surface-glass: rgba(248, 253, 253, 0.62);
+  --surface-soft: rgba(255, 255, 255, 0.78);
+  --surface-tint: rgba(255, 255, 255, 0.68);
+  --surface-pill: rgba(255, 255, 255, 0.48);
+  --surface-input: rgba(255, 255, 255, 0.72);
+  --surface-border: rgba(255, 255, 255, 0.58);
+  --surface-edge: rgba(255, 255, 255, 0.72);
+  --surface-shadow: rgba(34, 87, 103, 0.1);
+  --surface-soft-shadow: rgba(34, 87, 103, 0.06);
+}
+
+html.dark {
+  color-scheme: dark;
+  --color-background: oklch(0.18 0.025 230);
+  --color-foreground: oklch(0.94 0.012 218);
+  --color-card: oklch(0.25 0.032 230);
+  --color-card-foreground: oklch(0.94 0.012 218);
+  --color-muted: oklch(0.31 0.035 228);
+  --color-muted-foreground: oklch(0.72 0.035 218);
+  --color-primary: oklch(0.74 0.13 205);
+  --color-primary-foreground: oklch(0.16 0.028 230);
+  --color-secondary: oklch(0.3 0.04 228);
+  --color-secondary-foreground: oklch(0.9 0.02 218);
+  --color-accent: oklch(0.43 0.09 205);
+  --color-accent-foreground: oklch(0.94 0.012 218);
+  --color-border: oklch(0.38 0.04 228);
+  --color-ring: oklch(0.74 0.13 205);
+  --app-background:
+    radial-gradient(circle at 50% -16%, rgba(79, 182, 220, 0.16), transparent 28rem),
+    linear-gradient(180deg, oklch(0.19 0.028 230) 0%, oklch(0.16 0.026 235) 58%, oklch(0.14 0.024 238) 100%);
+  --surface-glass: rgba(24, 39, 51, 0.58);
+  --surface-soft: rgba(25, 39, 50, 0.68);
+  --surface-tint: rgba(36, 53, 66, 0.62);
+  --surface-pill: rgba(43, 64, 78, 0.52);
+  --surface-input: rgba(32, 48, 61, 0.72);
+  --surface-border: rgba(149, 215, 240, 0.13);
+  --surface-edge: rgba(202, 244, 255, 0.16);
+  --surface-shadow: rgba(0, 0, 0, 0.3);
+  --surface-soft-shadow: rgba(0, 0, 0, 0.22);
 }
 
 * {
@@ -32,7 +76,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--color-background);
+  background: var(--app-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -68,12 +112,12 @@ textarea {
 .liquid-glass {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  background: rgba(249, 252, 255, 0.62);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-glass);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.74),
-    inset 0 -1px 0 rgba(65, 118, 157, 0.08),
-    0 12px 32px rgba(37, 66, 88, 0.1);
+    inset 0 1px 0 var(--surface-edge),
+    inset 0 -1px 0 color-mix(in oklch, var(--color-primary) 15%, transparent),
+    0 12px 32px var(--surface-shadow);
   backdrop-filter: blur(30px) saturate(1.35);
   -webkit-backdrop-filter: blur(30px) saturate(1.35);
   transform: translateZ(0);
@@ -95,18 +139,18 @@ textarea {
   pointer-events: none;
   border-radius: inherit;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(41, 86, 118, 0.06);
+    inset 0 0 0 1px color-mix(in oklch, var(--surface-edge) 40%, transparent),
+    inset 0 -1px 0 color-mix(in oklch, var(--color-primary) 12%, transparent);
 }
 
 .soft-surface {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface-soft);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 1px 1px rgba(37, 66, 88, 0.03),
-    0 10px 24px rgba(37, 66, 88, 0.06);
+    inset 0 1px 0 var(--surface-edge),
+    0 1px 1px color-mix(in oklch, var(--surface-soft-shadow) 50%, transparent),
+    0 10px 24px var(--surface-soft-shadow);
   backdrop-filter: blur(18px) saturate(1.18);
   -webkit-backdrop-filter: blur(18px) saturate(1.18);
   transition:
@@ -143,11 +187,11 @@ textarea {
 .liquid-control {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.56);
-  background: rgba(248, 252, 255, 0.58);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-glass);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.68),
-    0 8px 20px rgba(37, 66, 88, 0.08);
+    inset 0 1px 0 var(--surface-edge),
+    0 8px 20px var(--surface-soft-shadow);
   backdrop-filter: blur(24px) saturate(1.28);
   -webkit-backdrop-filter: blur(24px) saturate(1.28);
 }
@@ -169,8 +213,46 @@ textarea {
 
 .nav-glass {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 18px 42px rgba(37, 66, 88, 0.13);
+    inset 0 1px 0 var(--surface-edge),
+    0 18px 42px var(--surface-shadow);
+}
+
+.surface-tint {
+  border: 1px solid var(--surface-border);
+  background: var(--surface-tint);
+  box-shadow: inset 0 1px 0 var(--surface-edge);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.surface-pill {
+  background: var(--surface-pill);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--surface-edge) 70%, transparent);
+}
+
+.surface-input {
+  border: 1px solid var(--surface-border);
+  background: var(--surface-input);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--surface-edge) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.bg-white,
+.bg-white\/70,
+.bg-white\/62,
+.bg-white\/56 {
+  border: 1px solid var(--surface-border);
+  background: var(--surface-tint);
+  box-shadow: inset 0 1px 0 var(--surface-edge);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.bg-white\/48,
+.bg-white\/46 {
+  background: var(--surface-pill);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--surface-edge) 70%, transparent);
 }
 
 @keyframes page-in {

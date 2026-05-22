@@ -1,4 +1,4 @@
-import { Bell, Database, Download, Moon, Shield, Target, Trash2 } from "lucide-react"
+import { Bell, Check, Database, Download, Moon, Shield, Sun, Target, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ErrorState, LoadingState } from "@/components/ui/state"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import { useTheme } from "@/lib/theme"
+import { cn } from "@/lib/utils"
 
 const titles: Record<string, string> = {
   goals: "目标",
@@ -63,20 +65,7 @@ function renderSection(section: string, showToast: (toast: { title: string; desc
   }
 
   if (section === "appearance") {
-    return (
-      <div className="grid grid-cols-3 gap-2">
-        {["系统", "浅色", "深色"].map((item) => (
-          <button
-            key={item}
-            className="rounded-3xl bg-white/70 p-4 text-center font-medium transition active:scale-95"
-            onClick={() => showToast({ title: "外观已更新", description: item })}
-          >
-            <Moon className="mx-auto mb-2 h-5 w-5" />
-            {item}
-          </button>
-        ))}
-      </div>
-    )
+    return <AppearanceSettings showToast={showToast} />
   }
 
   if (section === "data") {
@@ -88,7 +77,7 @@ function renderSection(section: string, showToast: (toast: { title: string; desc
             <Download className="h-4 w-4" />
             导出
           </Button>
-          <Button variant="ghost" onClick={() => showToast({ title: "已清除本地缓存" })}>
+          <Button variant="ghost" onClick={() => showToast({ title: "已清除" })}>
             <Trash2 className="h-4 w-4" />
             清除
           </Button>
@@ -115,6 +104,112 @@ function renderSection(section: string, showToast: (toast: { title: string; desc
   }
 
   return null
+}
+
+function AppearanceSettings({ showToast }: { showToast: (toast: { title: string; description?: string }) => void }) {
+  const { theme, setTheme } = useTheme()
+  const isDark = theme === "dark"
+
+  function selectTheme(nextTheme: "light" | "dark") {
+    setTheme(nextTheme)
+    showToast({ title: nextTheme === "dark" ? "Slate / Cyan Dark" : "Aqua / Porcelain" })
+  }
+
+  return (
+    <div className="space-y-4">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between rounded-3xl bg-white/70 p-4 text-left transition active:scale-[0.99]"
+        onClick={() => selectTheme(isDark ? "light" : "dark")}
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted">
+            {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          </span>
+          <span>
+            <span className="block font-medium">深色模式</span>
+            <span className="block text-sm text-muted-foreground">{isDark ? "Slate / Cyan Dark" : "Aqua / Porcelain"}</span>
+          </span>
+        </span>
+        <span
+          className={cn(
+            "relative flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors duration-300",
+            isDark ? "bg-primary" : "bg-muted",
+          )}
+          aria-hidden="true"
+        >
+          <span
+            className={cn(
+              "flex h-6 w-6 items-center justify-center rounded-full bg-card shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-transform duration-300 ease-out",
+              isDark && "translate-x-6",
+            )}
+          >
+            {isDark ? <Check className="h-3.5 w-3.5 text-primary" /> : null}
+          </span>
+        </span>
+      </button>
+
+      <div className="grid grid-cols-2 gap-3">
+        <ThemePreview
+          active={!isDark}
+          title="Aqua"
+          subtitle="Porcelain"
+          tone="light"
+          onClick={() => selectTheme("light")}
+        />
+        <ThemePreview
+          active={isDark}
+          title="Slate"
+          subtitle="Cyan Dark"
+          tone="dark"
+          onClick={() => selectTheme("dark")}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ThemePreview({
+  active,
+  title,
+  subtitle,
+  tone,
+  onClick,
+}: {
+  active: boolean
+  title: string
+  subtitle: string
+  tone: "light" | "dark"
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "rounded-3xl p-3 text-left transition active:scale-95",
+        active ? "ring-2 ring-ring" : "ring-1 ring-transparent",
+        tone === "light" ? "bg-[#edf9fa] text-[#1b3035]" : "bg-[#101b25] text-[#e7f6fb]",
+      )}
+      onClick={onClick}
+    >
+      <div className="mb-3 flex h-20 flex-col justify-end rounded-[1.35rem] border border-white/30 bg-white/40 p-2 backdrop-blur-xl">
+        <span
+          className={cn(
+            "mb-2 block h-2 w-12 rounded-full",
+            tone === "light" ? "bg-[#45a7bd]" : "bg-[#7cd8ee]",
+          )}
+        />
+        <span className="block h-2 w-20 rounded-full bg-current opacity-20" />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span>
+          <span className="block text-sm font-semibold">{title}</span>
+          <span className="block text-xs opacity-70">{subtitle}</span>
+        </span>
+        {active ? <Check className="h-4 w-4" /> : null}
+      </div>
+    </button>
+  )
 }
 
 function GoalSettings({ onSave }: { onSave: () => void }) {
