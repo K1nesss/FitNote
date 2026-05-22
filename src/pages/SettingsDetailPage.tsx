@@ -112,7 +112,7 @@ function AppearanceSettings({ showToast }: { showToast: (toast: { title: string;
 
   function selectTheme(nextTheme: "light" | "dark") {
     setTheme(nextTheme)
-    showToast({ title: nextTheme === "dark" ? "Slate / Cyan Dark" : "Aqua / Porcelain" })
+    showToast({ title: nextTheme === "dark" ? "Apple Dark" : "Aqua / Porcelain" })
   }
 
   return (
@@ -128,7 +128,7 @@ function AppearanceSettings({ showToast }: { showToast: (toast: { title: string;
           </span>
           <span>
             <span className="block font-medium">深色模式</span>
-            <span className="block text-sm text-muted-foreground">{isDark ? "Slate / Cyan Dark" : "Aqua / Porcelain"}</span>
+            <span className="block text-sm text-muted-foreground">{isDark ? "Apple Dark" : "Aqua / Porcelain"}</span>
           </span>
         </span>
         <span
@@ -159,8 +159,8 @@ function AppearanceSettings({ showToast }: { showToast: (toast: { title: string;
         />
         <ThemePreview
           active={isDark}
-          title="Slate"
-          subtitle="Cyan Dark"
+          title="Apple"
+          subtitle="Dark"
           tone="dark"
           onClick={() => selectTheme("dark")}
         />
@@ -188,7 +188,7 @@ function ThemePreview({
       className={cn(
         "rounded-3xl p-3 text-left transition active:scale-95",
         active ? "ring-2 ring-ring" : "ring-1 ring-transparent",
-        tone === "light" ? "bg-[#edf9fa] text-[#1b3035]" : "bg-[#101b25] text-[#e7f6fb]",
+        tone === "light" ? "bg-[#edf9fa] text-[#1b3035]" : "bg-[#111113] text-[#f2f2f7]",
       )}
       onClick={onClick}
     >
@@ -196,7 +196,7 @@ function ThemePreview({
         <span
           className={cn(
             "mb-2 block h-2 w-12 rounded-full",
-            tone === "light" ? "bg-[#45a7bd]" : "bg-[#7cd8ee]",
+            tone === "light" ? "bg-[#45a7bd]" : "bg-[#0a84ff]",
           )}
         />
         <span className="block h-2 w-20 rounded-full bg-current opacity-20" />

@@ -39,32 +39,30 @@
 
 html.dark {
   color-scheme: dark;
-  --color-background: oklch(0.18 0.025 230);
-  --color-foreground: oklch(0.94 0.012 218);
-  --color-card: oklch(0.25 0.032 230);
-  --color-card-foreground: oklch(0.94 0.012 218);
-  --color-muted: oklch(0.31 0.035 228);
-  --color-muted-foreground: oklch(0.72 0.035 218);
-  --color-primary: oklch(0.74 0.13 205);
-  --color-primary-foreground: oklch(0.16 0.028 230);
-  --color-secondary: oklch(0.3 0.04 228);
-  --color-secondary-foreground: oklch(0.9 0.02 218);
-  --color-accent: oklch(0.43 0.09 205);
-  --color-accent-foreground: oklch(0.94 0.012 218);
-  --color-border: oklch(0.38 0.04 228);
-  --color-ring: oklch(0.74 0.13 205);
-  --app-background:
-    radial-gradient(circle at 50% -16%, rgba(79, 182, 220, 0.16), transparent 28rem),
-    linear-gradient(180deg, oklch(0.19 0.028 230) 0%, oklch(0.16 0.026 235) 58%, oklch(0.14 0.024 238) 100%);
-  --surface-glass: rgba(24, 39, 51, 0.58);
-  --surface-soft: rgba(25, 39, 50, 0.68);
-  --surface-tint: rgba(36, 53, 66, 0.62);
-  --surface-pill: rgba(43, 64, 78, 0.52);
-  --surface-input: rgba(32, 48, 61, 0.72);
-  --surface-border: rgba(149, 215, 240, 0.13);
-  --surface-edge: rgba(202, 244, 255, 0.16);
-  --surface-shadow: rgba(0, 0, 0, 0.3);
-  --surface-soft-shadow: rgba(0, 0, 0, 0.22);
+  --color-background: oklch(0.15 0.004 270);
+  --color-foreground: oklch(0.93 0.004 270);
+  --color-card: oklch(0.23 0.004 270);
+  --color-card-foreground: oklch(0.93 0.004 270);
+  --color-muted: oklch(0.31 0.004 270);
+  --color-muted-foreground: oklch(0.68 0.004 270);
+  --color-primary: oklch(0.64 0.19 255);
+  --color-primary-foreground: oklch(0.985 0.002 270);
+  --color-secondary: oklch(0.28 0.004 270);
+  --color-secondary-foreground: oklch(0.9 0.004 270);
+  --color-accent: oklch(0.34 0.004 270);
+  --color-accent-foreground: oklch(0.92 0.004 270);
+  --color-border: oklch(0.36 0.004 270);
+  --color-ring: oklch(0.64 0.19 255);
+  --app-background: linear-gradient(180deg, oklch(0.17 0.004 270) 0%, oklch(0.135 0.004 270) 100%);
+  --surface-glass: rgba(28, 28, 30, 0.72);
+  --surface-soft: rgba(28, 28, 30, 0.86);
+  --surface-tint: rgba(44, 44, 46, 0.72);
+  --surface-pill: rgba(58, 58, 60, 0.62);
+  --surface-input: rgba(44, 44, 46, 0.78);
+  --surface-border: rgba(255, 255, 255, 0.1);
+  --surface-edge: rgba(255, 255, 255, 0.14);
+  --surface-shadow: rgba(0, 0, 0, 0.36);
+  --surface-soft-shadow: rgba(0, 0, 0, 0.26);
 }
 
 * {

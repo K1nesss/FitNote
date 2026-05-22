@@ -11,7 +11,7 @@ type ThemeContextValue = {
 const storageKey = "fitnote.theme"
 const themeColor = {
   light: "#edf9fa",
-  dark: "#0d1923",
+  dark: "#111113",
 } satisfies Record<ThemeMode, string>
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
