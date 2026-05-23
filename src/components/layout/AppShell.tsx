@@ -1,7 +1,5 @@
 import { ChevronLeft, Dumbbell, Home, PieChart, Utensils } from "lucide-react"
 import type { ReactNode } from "react"
-import { useRef } from "react"
-import LiquidGlass from "liquid-glass-react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
@@ -16,7 +14,6 @@ const navItems = [
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const navRef = useRef<HTMLElement | null>(null)
   const rootPaths = ["/", "/workout", "/food", "/stats", "/profile", "/onboarding"]
   const tabPaths = ["/", "/workout", "/food", "/stats"]
   const isRootPage = rootPaths.includes(location.pathname)
@@ -63,48 +60,32 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
 
         {showBottomNav ? (
-          <nav ref={navRef} className="bottom-nav-safe fixed inset-x-0 bottom-0 z-30 mx-auto max-w-3xl px-4">
-            <div className="relative h-[4.5rem]">
-              <LiquidGlass
-                className="fitnote-liquid-nav"
-                displacementScale={78}
-                blurAmount={0.035}
-                saturation={180}
-                aberrationIntensity={2.2}
-                elasticity={0.28}
-                cornerRadius={34}
-                padding="0"
-                mouseContainer={navRef}
-                mode="prominent"
-                style={{ position: "absolute", top: "50%", left: "50%", width: "100%" }}
-              >
-                <div className="relative grid h-[4.5rem] w-full grid-cols-4 items-center rounded-[2.15rem] p-2">
-                  {activeIndex >= 0 ? (
-                    <div className="pointer-events-none absolute inset-2 z-0 grid grid-cols-4" aria-hidden="true">
-                      <div
-                        className="nav-active-glass col-start-1 h-14 rounded-[1.65rem] transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
-                        style={{ transform: `translateX(${activeIndex * 100}%)` }}
-                      />
-                    </div>
-                  ) : null}
-                  {navItems.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end={item.to === "/"}
-                      className={({ isActive }) =>
-                        cn(
-                          "relative z-10 mx-auto flex h-14 w-14 items-center justify-center rounded-[1.65rem] text-muted-foreground opacity-80 transition-all duration-500 ease-out hover:opacity-100 active:scale-95",
-                          isActive && "scale-105 text-foreground opacity-100",
-                        )
-                      }
-                    >
-                      <item.icon className="h-5 w-5" aria-hidden="true" />
-                      <span className="sr-only">{item.label}</span>
-                    </NavLink>
-                  ))}
+          <nav className="bottom-nav-safe fixed inset-x-0 bottom-0 z-30 mx-auto max-w-3xl px-4">
+            <div className="liquid-glass nav-glass relative grid h-[4.5rem] grid-cols-4 items-center rounded-[2.15rem] p-2">
+              {activeIndex >= 0 ? (
+                <div className="pointer-events-none absolute inset-2 z-0 grid grid-cols-4" aria-hidden="true">
+                  <div
+                    className="liquid-control col-start-1 h-14 rounded-[1.65rem] transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                    style={{ transform: `translateX(${activeIndex * 100}%)` }}
+                  />
                 </div>
-              </LiquidGlass>
+              ) : null}
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  className={({ isActive }) =>
+                    cn(
+                      "relative z-10 mx-auto flex h-14 w-14 items-center justify-center rounded-[1.65rem] text-muted-foreground opacity-80 transition-all duration-500 ease-out hover:opacity-100 active:scale-95",
+                      isActive && "scale-105 text-foreground opacity-100",
+                    )
+                  }
+                >
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
+                  <span className="sr-only">{item.label}</span>
+                </NavLink>
+              ))}
             </div>
           </nav>
         ) : null}
