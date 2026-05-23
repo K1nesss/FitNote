@@ -8,7 +8,7 @@ import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useAppData } from "@/lib/app-data"
-import { mealDraftStorageKey, type MealDraft, type MealDraftItem } from "@/pages/FoodPage"
+import { mealDraftStorageKey, mealTypeOptions, type MealDraft, type MealDraftItem } from "@/pages/FoodPage"
 
 type MealItem = MealDraftItem & {
   id: string
@@ -24,8 +24,8 @@ export function MealConfirmPage() {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 })
   const total = useMemo(
-    () =>
-      mealItems.reduce(
+    () => {
+      const value = mealItems.reduce(
         (acc, item) => ({
           calories: acc.calories + item.calories,
           protein: acc.protein + item.protein,
@@ -33,9 +33,18 @@ export function MealConfirmPage() {
           fat: acc.fat + item.fat,
         }),
         { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      ),
+      )
+
+      return {
+        calories: roundMacro(value.calories),
+        protein: roundMacro(value.protein),
+        carbs: roundMacro(value.carbs),
+        fat: roundMacro(value.fat),
+      }
+    },
     [mealItems],
   )
+  const mealType = readMealDraft()?.mealType ?? "lunch"
 
   function updateItem(id: string, key: keyof Omit<MealItem, "id" | "name">, value: number) {
     setMealItems((current) =>
@@ -57,6 +66,7 @@ export function MealConfirmPage() {
   async function saveCurrentMeal() {
     await saveMeal({
       rawText: "AI JSON",
+      mealType,
       calories: total.calories,
       protein: total.protein,
       carbs: total.carbs,
@@ -90,7 +100,7 @@ export function MealConfirmPage() {
               <div key={label} className="rounded-3xl bg-muted/70 p-4">
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className="mt-2 text-2xl font-semibold">
-                  {value}
+                  {formatMacro(Number(value))}
                   <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
                 </p>
               </div>
@@ -101,7 +111,7 @@ export function MealConfirmPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">食物</h2>
+          <h2 className="text-lg font-semibold">{mealTypeOptions.find((item) => item.value === mealType)?.label ?? "饮食"}</h2>
           <Button size="sm" variant="quiet" aria-label="添加" onClick={() => setAdding(true)}>
             <Plus className="h-4 w-4" />
           </Button>
@@ -112,7 +122,7 @@ export function MealConfirmPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="font-medium">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">{item.calories} kcal</p>
+                  <p className="text-sm text-muted-foreground">{formatMacro(item.calories)} kcal</p>
                 </div>
                 <Button
                   size="icon"
@@ -251,4 +261,13 @@ function readMealDraft(): MealDraft | null {
   } catch {
     return null
   }
+}
+
+function roundMacro(value: number) {
+  return Math.round(value * 10) / 10
+}
+
+function formatMacro(value: number) {
+  const rounded = roundMacro(value)
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }

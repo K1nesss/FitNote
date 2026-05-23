@@ -15,6 +15,20 @@
       "when": 1779505947998,
       "tag": "0001_purple_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779507902895,
+      "tag": "0002_rapid_roulette",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1779525778387,
+      "tag": "0003_bitter_energizer",
+      "breakpoints": true
     }
   ]
 }

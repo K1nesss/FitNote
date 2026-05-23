@@ -4,10 +4,13 @@ import { useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog } from "@/components/ui/dialog"
 import { ErrorState, LoadingState } from "@/components/ui/state"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import type { ReminderSettings } from "@/lib/api"
 import { useAppData } from "@/lib/app-data"
+import { requestNotificationPermission } from "@/lib/reminders"
 import { useTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
@@ -22,7 +25,7 @@ const titles: Record<string, string> = {
 export function SettingsDetailPage() {
   const section = useParams().section ?? "goals"
   const { showToast } = useToast()
-  const { data, saveProfile } = useAppData()
+  const appData = useAppData()
   const title = titles[section] ?? "设置"
 
   return (
@@ -31,7 +34,7 @@ export function SettingsDetailPage() {
         <CardHeader>
           <CardTitle className="text-3xl">{title}</CardTitle>
         </CardHeader>
-        <CardContent>{renderSection(section, showToast, data, saveProfile)}</CardContent>
+        <CardContent>{renderSection(section, showToast, appData)}</CardContent>
       </Card>
     </div>
   )
@@ -40,31 +43,14 @@ export function SettingsDetailPage() {
 function renderSection(
   section: string,
   showToast: (toast: { title: string; description?: string }) => void,
-  data: ReturnType<typeof useAppData>["data"],
-  saveProfile: ReturnType<typeof useAppData>["saveProfile"],
+  appData: ReturnType<typeof useAppData>,
 ) {
   if (section === "goals") {
-    return <GoalSettings data={data} onSave={saveProfile} onSaved={() => showToast({ title: "目标已保存" })} />
+    return <GoalSettings data={appData.data} onSave={appData.saveProfile} onSaved={() => showToast({ title: "目标已保存" })} />
   }
 
   if (section === "reminders") {
-    return (
-      <div className="space-y-3">
-        {[
-          ["训练提醒", "19:00", Bell],
-          ["饮食记录", "12:30", Bell],
-          ["周报", "周日", Bell],
-        ].map(([label, value, Icon]) => (
-          <div key={label as string} className="flex items-center justify-between rounded-3xl bg-white/70 p-4">
-            <span className="flex items-center gap-3">
-              <Icon className="h-5 w-5" />
-              <span className="font-medium">{label as string}</span>
-            </span>
-            <span className="text-sm text-muted-foreground">{value as string}</span>
-          </div>
-        ))}
-      </div>
-    )
+    return <ReminderSettingsPanel appData={appData} showToast={showToast} />
   }
 
   if (section === "appearance") {
@@ -72,25 +58,7 @@ function renderSection(
   }
 
   if (section === "data") {
-    return (
-      <div className="space-y-3">
-        <LoadingState title="同步检查" />
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="quiet" onClick={() => showToast({ title: "已导出" })}>
-            <Download className="h-4 w-4" />
-            导出
-          </Button>
-          <Button variant="ghost" onClick={() => showToast({ title: "已清除" })}>
-            <Trash2 className="h-4 w-4" />
-            清除
-          </Button>
-        </div>
-        <div className="rounded-3xl bg-white/70 p-4 text-sm text-muted-foreground">
-          <Database className="mb-3 h-5 w-5" />
-          D1 / 本地缓存 / AI 估算记录
-        </div>
-      </div>
-    )
+    return <DataSettings appData={appData} showToast={showToast} />
   }
 
   if (section === "privacy") {
@@ -107,6 +75,181 @@ function renderSection(
   }
 
   return null
+}
+
+function ReminderSettingsPanel({
+  appData,
+  showToast,
+}: {
+  appData: ReturnType<typeof useAppData>
+  showToast: (toast: { title: string; description?: string }) => void
+}) {
+  const [reminders, setReminders] = useState<ReminderSettings>(
+    appData.data?.settings.reminders ?? {
+      workout: { enabled: true, time: "19:00" },
+      meal: { enabled: true, time: "12:30" },
+      weekly: { enabled: false, day: 7, time: "20:30" },
+    },
+  )
+
+  async function enableNotifications() {
+    const permission = await requestNotificationPermission()
+    showToast({ title: permission === "granted" ? "已开启" : "未开启" })
+  }
+
+  async function save() {
+    await appData.saveReminders(reminders)
+    showToast({ title: "已保存" })
+  }
+
+  return (
+    <div className="space-y-3">
+      <ReminderRow
+        label="训练"
+        enabled={reminders.workout.enabled}
+        time={reminders.workout.time}
+        onToggle={() =>
+          setReminders((current) => ({ ...current, workout: { ...current.workout, enabled: !current.workout.enabled } }))
+        }
+        onTime={(time) => setReminders((current) => ({ ...current, workout: { ...current.workout, time } }))}
+      />
+      <ReminderRow
+        label="饮食"
+        enabled={reminders.meal.enabled}
+        time={reminders.meal.time}
+        onToggle={() => setReminders((current) => ({ ...current, meal: { ...current.meal, enabled: !current.meal.enabled } }))}
+        onTime={(time) => setReminders((current) => ({ ...current, meal: { ...current.meal, time } }))}
+      />
+      <div className="rounded-3xl bg-white/70 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="flex items-center gap-3 font-medium">
+            <Bell className="h-5 w-5" />
+            周报
+          </span>
+          <button
+            type="button"
+            className={cn("h-8 w-14 rounded-full p-1 transition", reminders.weekly.enabled ? "bg-primary" : "bg-muted")}
+            onClick={() => setReminders((current) => ({ ...current, weekly: { ...current.weekly, enabled: !current.weekly.enabled } }))}
+            aria-label="周报"
+          >
+            <span className={cn("block h-6 w-6 rounded-full bg-card transition", reminders.weekly.enabled && "translate-x-6")} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            inputMode="numeric"
+            value={reminders.weekly.day}
+            onChange={(event) =>
+              setReminders((current) => ({ ...current, weekly: { ...current.weekly, day: Number(event.target.value) || 7 } }))
+            }
+          />
+          <Input
+            type="time"
+            value={reminders.weekly.time}
+            onChange={(event) => setReminders((current) => ({ ...current, weekly: { ...current.weekly, time: event.target.value } }))}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="quiet" onClick={enableNotifications}>
+          <Bell className="h-4 w-4" />
+          权限
+        </Button>
+        <Button onClick={save}>
+          <Check className="h-4 w-4" />
+          保存
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function ReminderRow({
+  label,
+  enabled,
+  time,
+  onToggle,
+  onTime,
+}: {
+  label: string
+  enabled: boolean
+  time: string
+  onToggle: () => void
+  onTime: (time: string) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-3xl bg-white/70 p-4">
+      <span className="flex items-center gap-3 font-medium">
+        <Bell className="h-5 w-5" />
+        {label}
+      </span>
+      <span className="flex items-center gap-2">
+        <Input className="h-10 w-28" type="time" value={time} onChange={(event) => onTime(event.target.value)} />
+        <button
+          type="button"
+          className={cn("h-8 w-14 rounded-full p-1 transition", enabled ? "bg-primary" : "bg-muted")}
+          onClick={onToggle}
+          aria-label={label}
+        >
+          <span className={cn("block h-6 w-6 rounded-full bg-card transition", enabled && "translate-x-6")} />
+        </button>
+      </span>
+    </div>
+  )
+}
+
+function DataSettings({
+  appData,
+  showToast,
+}: {
+  appData: ReturnType<typeof useAppData>
+  showToast: (toast: { title: string; description?: string }) => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+
+  async function exportJson() {
+    const data = await appData.exportData()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `fitnote-export-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    showToast({ title: "已导出" })
+  }
+
+  async function clear() {
+    await appData.clearData()
+    setConfirming(false)
+    showToast({ title: "已清除" })
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-3xl bg-white/70 p-4 text-sm text-muted-foreground">
+        <Database className="mb-3 h-5 w-5" />
+        D1 / JSON / 本机通知
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="quiet" onClick={exportJson}>
+          <Download className="h-4 w-4" />
+          导出
+        </Button>
+        <Button variant="ghost" onClick={() => setConfirming(true)}>
+          <Trash2 className="h-4 w-4" />
+          清除
+        </Button>
+      </div>
+      <Dialog open={confirming} title="清除数据" onClose={() => setConfirming(false)}>
+        <p className="text-sm text-muted-foreground">训练、饮食、计划和自定义动作会被清除。</p>
+        <Button variant="ghost" className="w-full rounded-3xl" onClick={clear}>
+          <Trash2 className="h-4 w-4" />
+          清除
+        </Button>
+      </Dialog>
+    </div>
+  )
 }
 
 function AppearanceSettings({ showToast }: { showToast: (toast: { title: string; description?: string }) => void }) {

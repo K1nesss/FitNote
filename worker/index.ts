@@ -11,37 +11,92 @@ const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
 }
 
+const defaultReminders = {
+  workout: { enabled: true, time: "19:00" },
+  meal: { enabled: true, time: "12:30" },
+  weekly: { enabled: false, day: 7, time: "20:30" },
+}
+
 const builtinExercises = [
   ["barbell-bench-press", "杠铃卧推", "胸", 4, 8, 60],
+  ["incline-barbell-bench-press", "上斜杠铃卧推", "胸", 4, 8, 50],
+  ["decline-barbell-bench-press", "下斜杠铃卧推", "胸", 3, 10, 50],
+  ["dumbbell-bench-press", "哑铃卧推", "胸", 4, 10, 24],
   ["incline-dumbbell-press", "上斜哑铃卧推", "胸", 4, 10, 22],
+  ["machine-chest-press", "坐姿推胸器", "胸", 4, 10, 45],
+  ["smith-machine-bench-press", "史密斯卧推", "胸", 4, 8, 55],
+  ["pec-deck-fly", "蝴蝶机夹胸", "胸", 3, 12, 35],
+  ["cable-fly-high", "高位绳索夹胸", "胸", 3, 12, 15],
+  ["cable-fly-low", "低位绳索夹胸", "胸", 3, 12, 12.5],
   ["dumbbell-fly", "哑铃飞鸟", "胸", 3, 12, 12],
-  ["push-up", "俯卧撑", "胸", 4, 12, 0],
+  ["assisted-dip-machine", "辅助双杠臂屈伸", "胸", 3, 10, 35],
   ["lat-pulldown", "高位下拉", "背", 4, 10, 45],
-  ["seated-row", "坐姿划船", "背", 4, 10, 50],
+  ["close-grip-lat-pulldown", "窄握高位下拉", "背", 4, 10, 42.5],
+  ["straight-arm-pulldown", "直臂下压", "背", 3, 12, 25],
+  ["seated-cable-row", "坐姿绳索划船", "背", 4, 10, 50],
+  ["chest-supported-row", "俯身支撑划船器", "背", 4, 10, 40],
+  ["t-bar-row", "T 杠划船", "背", 4, 8, 45],
+  ["machine-row", "坐姿划船器", "背", 4, 10, 45],
   ["barbell-row", "杠铃划船", "背", 4, 8, 50],
-  ["pull-up", "引体向上", "背", 4, 6, 0],
-  ["deadlift", "硬拉", "背", 3, 5, 100],
+  ["one-arm-dumbbell-row", "单臂哑铃划船", "背", 3, 10, 28],
+  ["smith-machine-row", "史密斯划船", "背", 4, 10, 50],
+  ["barbell-deadlift", "杠铃硬拉", "背", 3, 5, 100],
+  ["rack-pull", "架上硬拉", "背", 3, 6, 120],
+  ["assisted-pull-up-machine", "辅助引体向上", "背", 4, 8, 40],
+  ["barbell-overhead-press", "杠铃推举", "肩", 4, 6, 40],
   ["dumbbell-shoulder-press", "哑铃肩推", "肩", 4, 10, 20],
-  ["lateral-raise", "侧平举", "肩", 4, 15, 8],
-  ["rear-delt-fly", "反向飞鸟", "肩", 3, 15, 8],
+  ["machine-shoulder-press", "肩推器", "肩", 4, 10, 35],
+  ["smith-machine-shoulder-press", "史密斯肩推", "肩", 4, 8, 35],
+  ["dumbbell-lateral-raise", "哑铃侧平举", "肩", 4, 15, 8],
+  ["cable-lateral-raise", "绳索侧平举", "肩", 3, 12, 7.5],
+  ["machine-lateral-raise", "侧平举器", "肩", 3, 12, 25],
+  ["reverse-pec-deck", "反向蝴蝶机", "肩", 4, 15, 30],
+  ["cable-face-pull", "绳索面拉", "肩", 3, 15, 22.5],
+  ["dumbbell-rear-delt-fly", "哑铃俯身飞鸟", "肩", 3, 15, 8],
   ["barbell-squat", "杠铃深蹲", "腿", 4, 6, 80],
+  ["front-squat", "杠铃前蹲", "腿", 4, 6, 60],
+  ["smith-machine-squat", "史密斯深蹲", "腿", 4, 8, 70],
+  ["hack-squat", "哈克深蹲", "腿", 4, 10, 80],
   ["leg-press", "腿举", "腿", 4, 10, 120],
-  ["romanian-deadlift", "罗马尼亚硬拉", "腿", 4, 8, 70],
+  ["pendulum-squat", "钟摆深蹲器", "腿", 4, 10, 60],
+  ["belt-squat", "腰带深蹲器", "腿", 4, 10, 60],
+  ["dumbbell-lunge", "哑铃弓步蹲", "腿", 3, 12, 20],
+  ["barbell-lunge", "杠铃弓步蹲", "腿", 3, 10, 40],
+  ["bulgarian-split-squat", "哑铃保加利亚分腿蹲", "腿", 3, 10, 18],
   ["leg-extension", "腿屈伸", "腿", 3, 12, 45],
-  ["leg-curl", "腿弯举", "腿", 3, 12, 35],
-  ["walking-lunge", "行走弓步", "腿", 3, 12, 20],
-  ["calf-raise", "提踵", "小腿", 4, 15, 40],
+  ["seated-leg-curl", "坐姿腿弯举", "腿", 3, 12, 35],
+  ["lying-leg-curl", "俯卧腿弯举", "腿", 3, 12, 35],
+  ["romanian-deadlift", "罗马尼亚硬拉", "腿", 4, 8, 70],
+  ["barbell-hip-thrust", "杠铃臀推", "臀", 4, 10, 80],
+  ["hip-thrust-machine", "臀推器", "臀", 4, 10, 70],
+  ["cable-kickback", "绳索后踢腿", "臀", 3, 12, 10],
+  ["hip-abduction-machine", "髋外展器", "臀", 3, 15, 45],
+  ["hip-adduction-machine", "髋内收器", "腿", 3, 15, 45],
+  ["standing-calf-raise-machine", "站姿提踵器", "小腿", 4, 15, 50],
+  ["seated-calf-raise-machine", "坐姿提踵器", "小腿", 4, 15, 35],
   ["barbell-curl", "杠铃弯举", "二头", 3, 10, 25],
+  ["ez-bar-curl", "EZ 杠弯举", "二头", 3, 10, 22.5],
   ["dumbbell-curl", "哑铃弯举", "二头", 3, 12, 12],
+  ["incline-dumbbell-curl", "上斜哑铃弯举", "二头", 3, 12, 10],
   ["hammer-curl", "锤式弯举", "二头", 3, 12, 12],
+  ["preacher-curl-machine", "牧师凳弯举器", "二头", 3, 12, 25],
+  ["cable-curl", "绳索弯举", "二头", 3, 12, 20],
   ["triceps-pushdown", "绳索下压", "三头", 3, 12, 25],
-  ["skull-crusher", "仰卧臂屈伸", "三头", 3, 10, 25],
-  ["dips", "双杠臂屈伸", "三头", 3, 8, 0],
-  ["plank", "平板支撑", "核心", 3, 60, 0],
-  ["crunch", "卷腹", "核心", 3, 15, 0],
-  ["hanging-leg-raise", "悬垂举腿", "核心", 3, 12, 0],
-  ["treadmill", "跑步机", "有氧", 1, 30, 0],
-  ["bike", "动感单车", "有氧", 1, 30, 0],
+  ["rope-pushdown", "绳索下压绳", "三头", 3, 12, 22.5],
+  ["overhead-cable-extension", "过顶绳索臂屈伸", "三头", 3, 12, 17.5],
+  ["ez-bar-skull-crusher", "EZ 杠仰卧臂屈伸", "三头", 3, 10, 25],
+  ["machine-triceps-extension", "三头臂屈伸器", "三头", 3, 12, 30],
+  ["smith-close-grip-bench", "史密斯窄握卧推", "三头", 3, 8, 45],
+  ["cable-crunch", "绳索卷腹", "核心", 3, 15, 30],
+  ["machine-crunch", "卷腹器", "核心", 3, 15, 35],
+  ["captains-chair-leg-raise", "罗马椅举腿", "核心", 3, 12, 0],
+  ["ab-wheel", "健腹轮", "核心", 3, 10, 0],
+  ["cable-woodchop", "绳索伐木", "核心", 3, 12, 15],
+  ["landmine-press", "地雷管推举", "肩", 3, 10, 25],
+  ["landmine-row", "地雷管划船", "背", 3, 10, 35],
+  ["landmine-squat", "地雷管深蹲", "腿", 3, 10, 30],
+  ["kettlebell-goblet-squat", "壶铃杯式深蹲", "腿", 3, 12, 24],
+  ["kettlebell-swing", "壶铃摆动", "臀", 3, 15, 20],
 ] as const
 
 export default {
@@ -100,6 +155,27 @@ export default {
         return json(await getBootstrap(db))
       }
 
+      if (url.pathname === "/api/reminders" && request.method === "PUT") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const body = await readBody<ReminderSettings>(request)
+        await saveReminders(db, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname === "/api/export" && request.method === "GET") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        return json(await exportData(db))
+      }
+
+      if (url.pathname === "/api/data" && request.method === "DELETE") {
+        const db = getDB(env)
+        await clearUserData(db)
+        await ensureDefaults(db)
+        return json(await getBootstrap(db))
+      }
+
       if (url.pathname.startsWith("/api/")) {
         return json({ error: "Not found" }, 404)
       }
@@ -140,6 +216,7 @@ type PlanInput = {
 }
 
 type MealInput = MacroInput & {
+  mealType?: string
   rawText?: string
   items?: Array<MacroInput & { name?: string }>
 }
@@ -149,6 +226,12 @@ type WorkoutSessionInput = {
   startedAt?: number
   finishedAt?: number
   sets?: Array<{ exerciseId?: string; setIndex?: number; actualReps?: number; actualWeight?: number }>
+}
+
+type ReminderSettings = {
+  workout?: { enabled?: boolean; time?: string }
+  meal?: { enabled?: boolean; time?: string }
+  weekly?: { enabled?: boolean; day?: number | string; time?: string }
 }
 
 function getDB(env: Env) {
@@ -171,8 +254,55 @@ async function readBody<T>(request: Request): Promise<T> {
   }
 }
 
+async function ensureRuntimeSchema(db: D1Database) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS d1_migrations(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )`,
+    )
+    .run()
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS app_settings (
+        key text PRIMARY KEY NOT NULL,
+        user_id text NOT NULL,
+        value text NOT NULL,
+        updated_at integer NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE no action ON DELETE no action
+      )`,
+    )
+    .run()
+
+  const mealColumns = await allRows(db, "PRAGMA table_info(meals)")
+
+  if (!mealColumns.some((column) => column.name === "meal_type")) {
+    await db.prepare("ALTER TABLE meals ADD meal_type text DEFAULT 'meal' NOT NULL").run()
+  }
+
+  await db.prepare("INSERT OR IGNORE INTO d1_migrations (name) VALUES (?)").bind("0002_rapid_roulette.sql").run()
+  await db.prepare("INSERT OR IGNORE INTO d1_migrations (name) VALUES (?)").bind("0003_bitter_energizer.sql").run()
+}
+
 async function ensureDefaults(db: D1Database) {
   const now = Date.now()
+
+  await ensureRuntimeSchema(db)
+
+  await db.prepare("UPDATE meals SET meal_type = 'lunch' WHERE meal_type IS NULL OR meal_type = '' OR meal_type = 'meal'").run()
+
+  await db
+    .prepare(
+      "UPDATE meal_items SET calories = ROUND(calories, 1), protein = ROUND(protein, 1), carbs = ROUND(carbs, 1), fat = ROUND(fat, 1)",
+    )
+    .run()
+
+  await db
+    .prepare("UPDATE meals SET calories = ROUND(calories, 1), protein = ROUND(protein, 1), carbs = ROUND(carbs, 1), fat = ROUND(fat, 1)")
+    .run()
 
   await db
     .prepare(
@@ -188,21 +318,24 @@ async function ensureDefaults(db: D1Database) {
     .bind(defaultUserId, 2200, 150, 240, 70, now)
     .run()
 
-  const count = await db
-    .prepare("SELECT COUNT(*) as count FROM exercise_library WHERE is_builtin = 1")
-    .first<{ count: number }>()
+  await db
+    .prepare("INSERT OR IGNORE INTO app_settings (key, user_id, value, updated_at) VALUES (?, ?, ?, ?)")
+    .bind("reminders", defaultUserId, JSON.stringify(defaultReminders), now)
+    .run()
 
-  if ((count?.count ?? 0) < builtinExercises.length) {
-    await db.batch(
-      builtinExercises.map(([id, name, muscle, sets, reps, weight]) =>
-        db
-          .prepare(
-            "INSERT OR IGNORE INTO exercise_library (id, user_id, name, muscle_group, default_sets, default_reps, default_weight, is_builtin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          )
-          .bind(id, null, name, muscle, sets, reps, weight, 1, now),
-      ),
-    )
-  }
+  await db.batch(
+    builtinExercises.map(([id, name, muscle, sets, reps, weight]) =>
+      db
+        .prepare(
+          `INSERT INTO exercise_library (id, user_id, name, muscle_group, default_sets, default_reps, default_weight, is_builtin, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name, muscle_group = excluded.muscle_group, default_sets = excluded.default_sets, default_reps = excluded.default_reps, default_weight = excluded.default_weight, is_builtin = 1`,
+        )
+        .bind(id, null, name, muscle, sets, reps, weight, 1, now),
+    ),
+  )
+
+  await pruneObsoleteBuiltinExercises(db)
 }
 
 async function getBootstrap(db: D1Database) {
@@ -229,13 +362,14 @@ async function getBootstrap(db: D1Database) {
   const todayPlan = plans.find((plan) => plan.weekday === weekday) ?? null
   const todayMeals = await allRows(
     db,
-    "SELECT id, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC",
+    "SELECT id, meal_type as mealType, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC",
     [defaultUserId, todayStart, tomorrowStart],
   )
   const todayMacro = sumMacros(todayMeals)
   const recentMeals = await getRecentMeals(db)
   const workoutHistory = await getWorkoutHistory(db)
   const stats = await getStats(db, weekStart, todayStart)
+  const settings = await getSettings(db)
 
   return {
     profile: {
@@ -267,7 +401,36 @@ async function getBootstrap(db: D1Database) {
     recentMeals,
     workoutHistory,
     stats,
+    settings,
   }
+}
+
+async function getSettings(db: D1Database) {
+  const reminderRow = await db
+    .prepare("SELECT value FROM app_settings WHERE key = ? AND user_id = ?")
+    .bind("reminders", defaultUserId)
+    .first<{ value: string }>()
+
+  return {
+    reminders: normalizeReminders(parseJson<ReminderSettings>(reminderRow?.value) ?? defaultReminders),
+  }
+}
+
+async function pruneObsoleteBuiltinExercises(db: D1Database) {
+  const ids = builtinExercises.map(([id]) => id)
+  const placeholders = ids.map(() => "?").join(", ")
+
+  await db
+    .prepare(
+      `DELETE FROM exercise_library
+       WHERE is_builtin = 1
+       AND id NOT IN (${placeholders})
+       AND id NOT IN (
+         SELECT library_exercise_id FROM workout_exercises WHERE library_exercise_id IS NOT NULL
+       )`,
+    )
+    .bind(...ids)
+    .run()
 }
 
 async function getPlans(db: D1Database) {
@@ -406,9 +569,19 @@ async function saveMeal(db: D1Database, input: MealInput) {
 
   await db
     .prepare(
-      "INSERT INTO meals (id, user_id, raw_text, calories, protein, carbs, fat, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO meals (id, user_id, meal_type, raw_text, calories, protein, carbs, fat, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(mealId, defaultUserId, normalizeText(input.rawText, "AI JSON"), totals.calories, totals.protein, totals.carbs, totals.fat, now)
+    .bind(
+      mealId,
+      defaultUserId,
+      normalizeMealType(input.mealType),
+      normalizeText(input.rawText, "AI JSON"),
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      now,
+    )
     .run()
 
   if (items.length > 0) {
@@ -454,16 +627,88 @@ async function saveWorkoutSession(db: D1Database, input: WorkoutSessionInput) {
   }
 }
 
+async function saveReminders(db: D1Database, input: ReminderSettings) {
+  const now = Date.now()
+
+  await db
+    .prepare(
+      `INSERT INTO app_settings (key, user_id, value, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    )
+    .bind("reminders", defaultUserId, JSON.stringify(normalizeReminders(input)), now)
+    .run()
+}
+
+async function exportData(db: D1Database) {
+  const [
+    users,
+    nutritionGoals,
+    appSettings,
+    exerciseLibrary,
+    workoutPlans,
+    workoutExercises,
+    workoutSessions,
+    workoutSets,
+    meals,
+    mealItems,
+  ] = await Promise.all([
+    allRows(db, "SELECT * FROM users ORDER BY created_at ASC"),
+    allRows(db, "SELECT * FROM nutrition_goals ORDER BY user_id ASC"),
+    allRows(db, "SELECT * FROM app_settings ORDER BY key ASC"),
+    allRows(db, "SELECT * FROM exercise_library ORDER BY is_builtin DESC, name ASC"),
+    allRows(db, "SELECT * FROM workout_plans ORDER BY weekday ASC"),
+    allRows(db, "SELECT * FROM workout_exercises ORDER BY sort_order ASC"),
+    allRows(db, "SELECT * FROM workout_sessions ORDER BY started_at DESC"),
+    allRows(db, "SELECT * FROM workout_sets ORDER BY completed_at DESC"),
+    allRows(db, "SELECT * FROM meals ORDER BY created_at DESC"),
+    allRows(db, "SELECT * FROM meal_items ORDER BY name ASC"),
+  ])
+
+  return {
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    data: {
+      users,
+      nutritionGoals,
+      appSettings,
+      exerciseLibrary,
+      workoutPlans,
+      workoutExercises,
+      workoutSessions,
+      workoutSets,
+      meals,
+      mealItems,
+    },
+  }
+}
+
+async function clearUserData(db: D1Database) {
+  await db.batch([
+    db.prepare("DELETE FROM meal_items"),
+    db.prepare("DELETE FROM meals"),
+    db.prepare("DELETE FROM workout_sets"),
+    db.prepare("DELETE FROM workout_sessions"),
+    db.prepare("DELETE FROM workout_exercises"),
+    db.prepare("DELETE FROM workout_plans"),
+    db.prepare("DELETE FROM exercise_library WHERE is_builtin = 0 OR user_id = ?").bind(defaultUserId),
+    db.prepare("DELETE FROM app_settings WHERE user_id = ?").bind(defaultUserId),
+    db.prepare("DELETE FROM nutrition_goals WHERE user_id = ?").bind(defaultUserId),
+    db.prepare("DELETE FROM users WHERE id = ?").bind(defaultUserId),
+  ])
+}
+
 async function getRecentMeals(db: D1Database) {
   const meals = await allRows(
     db,
-    "SELECT id, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? ORDER BY created_at DESC LIMIT 10",
+    "SELECT id, meal_type as mealType, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? ORDER BY created_at DESC LIMIT 10",
     [defaultUserId],
   )
 
   return meals.map((meal) => ({
     id: String(meal.id),
-    title: mealTitle(toNumber(meal.createdAt)),
+    mealType: normalizeMealType(meal.mealType),
+    title: mealTypeLabel(String(meal.mealType)),
     note: String(meal.rawText),
     calories: toNumber(meal.calories),
     protein: toNumber(meal.protein),
@@ -630,6 +875,44 @@ function normalizeText(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback
 }
 
+function parseJson<T>(value: unknown) {
+  if (typeof value !== "string") {
+    return null
+  }
+
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return null
+  }
+}
+
+function normalizeReminders(value: ReminderSettings) {
+  return {
+    workout: {
+      enabled: Boolean(value.workout?.enabled),
+      time: normalizeTime(value.workout?.time, defaultReminders.workout.time),
+    },
+    meal: {
+      enabled: Boolean(value.meal?.enabled),
+      time: normalizeTime(value.meal?.time, defaultReminders.meal.time),
+    },
+    weekly: {
+      enabled: Boolean(value.weekly?.enabled),
+      day: Math.max(1, Math.min(7, Math.round(toNumber(value.weekly?.day, defaultReminders.weekly.day)))),
+      time: normalizeTime(value.weekly?.time, defaultReminders.weekly.time),
+    },
+  }
+}
+
+function normalizeTime(value: unknown, fallback: string) {
+  if (typeof value !== "string") {
+    return fallback
+  }
+
+  return /^\d{2}:\d{2}$/.test(value) ? value : fallback
+}
+
 function startOfDay(timestamp: number) {
   const shifted = new Date(timestamp + tzOffsetMs)
   shifted.setUTCHours(0, 0, 0, 0)
@@ -657,4 +940,23 @@ function mealTitle(timestamp: number) {
   if (hour < 15) return "午餐"
   if (hour < 20) return "晚餐"
   return "加餐"
+}
+
+function normalizeMealType(value: unknown) {
+  const type = typeof value === "string" ? value : ""
+  const allowed = ["breakfast", "lunch", "dinner", "breakfastSnack", "lunchSnack", "dinnerSnack"]
+  return allowed.includes(type) ? type : "meal"
+}
+
+function mealTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    breakfast: "早餐",
+    lunch: "午餐",
+    dinner: "晚餐",
+    breakfastSnack: "加早餐",
+    lunchSnack: "加午餐",
+    dinnerSnack: "加晚餐",
+  }
+
+  return labels[type] ?? "饮食"
 }

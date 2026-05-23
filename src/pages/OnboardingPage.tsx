@@ -1,4 +1,5 @@
 import { Activity, ArrowRight, Dumbbell, Flame, UserRound } from "lucide-react"
+import type { ComponentProps } from "react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -78,20 +79,18 @@ export function OnboardingPage() {
               </div>
             ))}
           </div>
-          <Input
-            placeholder="昵称"
-            value={profile.name}
-            onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))}
-          />
+          <Input placeholder="昵称" value={profile.name} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))} />
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              placeholder="身高 cm"
+            <InputWithSuffix
+              suffix="cm"
+              placeholder="身高"
               inputMode="numeric"
               value={profile.height}
               onChange={(event) => setProfile((current) => ({ ...current, height: event.target.value }))}
             />
-            <Input
-              placeholder="体重 kg"
+            <InputWithSuffix
+              suffix="kg"
+              placeholder="体重"
               inputMode="decimal"
               value={profile.weight}
               onChange={(event) => setProfile((current) => ({ ...current, weight: event.target.value }))}
@@ -105,26 +104,30 @@ export function OnboardingPage() {
           <CardTitle>营养目标</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            placeholder="热量 kcal"
+          <InputWithSuffix
+            suffix="kcal"
+            placeholder="每日热量"
             value={profile.calories}
             inputMode="numeric"
             onChange={(event) => setProfile((current) => ({ ...current, calories: event.target.value }))}
           />
           <div className="grid grid-cols-3 gap-2">
-            <Input
+            <InputWithSuffix
+              suffix="蛋白 g"
               placeholder="P"
               value={profile.protein}
               inputMode="numeric"
               onChange={(event) => setProfile((current) => ({ ...current, protein: event.target.value }))}
             />
-            <Input
+            <InputWithSuffix
+              suffix="碳水 g"
               placeholder="C"
               value={profile.carbs}
               inputMode="numeric"
               onChange={(event) => setProfile((current) => ({ ...current, carbs: event.target.value }))}
             />
-            <Input
+            <InputWithSuffix
+              suffix="脂肪 g"
               placeholder="F"
               value={profile.fat}
               inputMode="numeric"
@@ -157,6 +160,21 @@ export function OnboardingPage() {
         完成
         <ArrowRight className="h-5 w-5" />
       </Button>
+    </div>
+  )
+}
+
+type InputWithSuffixProps = ComponentProps<typeof Input> & {
+  suffix: string
+}
+
+function InputWithSuffix({ suffix, className, ...props }: InputWithSuffixProps) {
+  return (
+    <div className="relative">
+      <Input className={`pr-16 ${className ?? ""}`} {...props} />
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+        {suffix}
+      </span>
     </div>
   )
 }

@@ -45,11 +45,14 @@ export type WorkoutPlan = {
 
 export type MealRecord = Macro & {
   id: string
+  mealType: MealType
   title: string
   note: string
   createdAt: number
   rawText?: string
 }
+
+export type MealType = "breakfast" | "lunch" | "dinner" | "breakfastSnack" | "lunchSnack" | "dinnerSnack"
 
 export type WorkoutHistoryItem = {
   id: string
@@ -80,6 +83,12 @@ export type AppStats = {
   exerciseTrends: ExerciseTrend[]
 }
 
+export type ReminderSettings = {
+  workout: { enabled: boolean; time: string }
+  meal: { enabled: boolean; time: string }
+  weekly: { enabled: boolean; day: number; time: string }
+}
+
 export type BootstrapData = {
   profile: UserProfile
   exerciseLibrary: LibraryExercise[]
@@ -90,6 +99,9 @@ export type BootstrapData = {
   recentMeals: MealRecord[]
   workoutHistory: WorkoutHistoryItem[]
   stats: AppStats
+  settings: {
+    reminders: ReminderSettings
+  }
 }
 
 export type ProfilePayload = {
@@ -113,6 +125,7 @@ export type PlanPayload = {
 }
 
 export type MealPayload = Macro & {
+  mealType: MealType
   rawText: string
   items: Array<Macro & { name: string }>
 }
@@ -151,6 +164,18 @@ export async function saveMeal(payload: MealPayload) {
 
 export async function saveWorkoutSession(payload: WorkoutSessionPayload) {
   return request<BootstrapData>("/api/workout-sessions", { method: "POST", body: payload })
+}
+
+export async function saveReminders(payload: ReminderSettings) {
+  return request<BootstrapData>("/api/reminders", { method: "PUT", body: payload })
+}
+
+export async function exportData() {
+  return request<Record<string, unknown>>("/api/export")
+}
+
+export async function clearData() {
+  return request<BootstrapData>("/api/data", { method: "DELETE" })
 }
 
 async function request<T>(path: string, options: { method?: string; body?: unknown } = {}) {

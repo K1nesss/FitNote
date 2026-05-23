@@ -18,6 +18,13 @@ export const nutritionGoals = sqliteTable("nutrition_goals", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 })
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+})
+
 export const exerciseLibrary = sqliteTable("exercise_library", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id),
@@ -71,6 +78,7 @@ export const workoutSets = sqliteTable("workout_sets", {
 export const meals = sqliteTable("meals", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id),
+  mealType: text("meal_type").notNull(),
   rawText: text("raw_text").notNull(),
   calories: real("calories").notNull(),
   protein: real("protein").notNull(),

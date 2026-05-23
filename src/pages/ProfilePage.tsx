@@ -18,7 +18,12 @@ export function ProfilePage() {
 
   const settings = [
     { label: "目标", value: `${data.profile.goals.calories} kcal`, icon: UserRound, href: "/profile/settings/goals" },
-    { label: "提醒", value: "开启", icon: Bell, href: "/profile/settings/reminders" },
+    {
+      label: "提醒",
+      value: data.settings.reminders.workout.enabled || data.settings.reminders.meal.enabled || data.settings.reminders.weekly.enabled ? "开启" : "关闭",
+      icon: Bell,
+      href: "/profile/settings/reminders",
+    },
     { label: "外观", value: "theme", icon: Moon, href: "/profile/settings/appearance" },
     { label: "数据", value: "D1", icon: Database, href: "/profile/settings/data" },
     { label: "隐私", value: "仅自己", icon: Shield, href: "/profile/settings/privacy" },

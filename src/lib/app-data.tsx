@@ -8,8 +8,10 @@ import type {
   MealPayload,
   PlanPayload,
   ProfilePayload,
+  ReminderSettings,
   WorkoutSessionPayload,
 } from "@/lib/api"
+import { useReminderScheduler } from "@/lib/reminders"
 
 type AppDataContextValue = {
   data: BootstrapData | null
@@ -22,6 +24,9 @@ type AppDataContextValue = {
   savePlan: (weekday: number, payload: PlanPayload) => Promise<void>
   saveMeal: (payload: MealPayload) => Promise<void>
   saveWorkoutSession: (payload: WorkoutSessionPayload) => Promise<void>
+  saveReminders: (payload: ReminderSettings) => Promise<void>
+  exportData: () => Promise<Record<string, unknown>>
+  clearData: () => Promise<void>
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null)
@@ -47,6 +52,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh()
   }, [refresh])
+  useReminderScheduler(data?.settings.reminders)
 
   async function apply(next: Promise<BootstrapData>) {
     setError(null)
@@ -72,6 +78,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       savePlan: (weekday, payload) => apply(api.savePlan(weekday, payload)),
       saveMeal: (payload) => apply(api.saveMeal(payload)),
       saveWorkoutSession: (payload) => apply(api.saveWorkoutSession(payload)),
+      saveReminders: (payload) => apply(api.saveReminders(payload)),
+      exportData: () => api.exportData(),
+      clearData: () => apply(api.clearData()),
     }),
     [data, error, loading, refresh],
   )
