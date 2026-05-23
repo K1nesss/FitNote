@@ -1,6 +1,7 @@
 import { Activity, Dumbbell, TrendingUp } from "lucide-react"
 import { useParams } from "react-router-dom"
 
+import { LiquidNutritionBars } from "@/components/stats/LiquidNutritionBars"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState, LoadingState } from "@/components/ui/state"
 import { useAppData } from "@/lib/app-data"
@@ -43,17 +44,11 @@ function renderDetail(type: keyof typeof detailMap, data: NonNullable<ReturnType
     return (
       <div className="space-y-4">
         <div className="flex h-52 items-end gap-3">
-          {data.stats.foodTrend.map((item) => (
-            <div key={item.day} className="flex flex-1 flex-col items-center gap-2">
-              <div className="flex h-40 w-full items-end rounded-full bg-muted/70 p-1">
-                <div
-                  className="w-full rounded-full bg-primary"
-                  style={{ height: `${(item.calories / Math.max(data.profile.goals.calories, 1)) * 100}%` }}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground">{item.day}</span>
-            </div>
-          ))}
+          <LiquidNutritionBars
+            trend={data.stats.foodTrend}
+            maxCalories={data.profile.goals.calories}
+            heightClassName="h-40"
+          />
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[

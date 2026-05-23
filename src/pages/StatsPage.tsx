@@ -1,6 +1,7 @@
 import { Activity, Dumbbell, TrendingUp } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import { LiquidNutritionBars } from "@/components/stats/LiquidNutritionBars"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState, LoadingState } from "@/components/ui/state"
 import { useAppData } from "@/lib/app-data"
@@ -52,17 +53,7 @@ export function StatsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex h-44 items-end gap-3">
-            {foodTrend.map((item) => (
-              <div key={item.day} className="flex flex-1 flex-col items-center gap-2">
-                <div className="flex h-32 w-full items-end rounded-full bg-muted/70 p-1">
-                  <div
-                    className="w-full rounded-full bg-primary"
-                    style={{ height: `${(item.calories / maxCalories) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">{item.day}</span>
-              </div>
-            ))}
+            <LiquidNutritionBars trend={foodTrend} maxCalories={maxCalories} />
           </div>
         </CardContent>
       </Card>
