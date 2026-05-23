@@ -3,7 +3,7 @@ import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog } from "@/components/ui/dialog"
-import { addDays, dateFromKey, monthGrid, recentDateKeys, relativeDateLabel, todayKey } from "@/lib/date"
+import { addDays, dateFromKey, monthGrid, recentDateKeys, relativeDateLabel, shortMonthDay, todayKey } from "@/lib/date"
 import { cn } from "@/lib/utils"
 
 type DateStripProps = {
@@ -15,7 +15,6 @@ export function DateStrip({ value, onChange }: DateStripProps) {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [visibleMonth, setVisibleMonth] = useState(value)
   const dates = useMemo(() => recentDateKeys(), [])
-  const selectedDate = dateFromKey(value)
   const calendarActive = !dates.includes(value)
   const calendarDays = monthGrid(visibleMonth)
   const monthDate = dateFromKey(visibleMonth)
@@ -57,7 +56,7 @@ export function DateStrip({ value, onChange }: DateStripProps) {
           }}
         >
           {calendarActive ? (
-            <span className="text-sm font-semibold">{selectedDate.getDate()}</span>
+            <span className="text-xs font-semibold">{shortMonthDay(value)}</span>
           ) : (
             <CalendarDays className="h-5 w-5" />
           )}
