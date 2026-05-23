@@ -34,12 +34,20 @@ export const mealDraftStorageKey = "fitnote.mealDraft"
 
 export const mealTypeOptions: Array<{ value: MealType; label: string }> = [
   { value: "breakfast", label: "早餐" },
-  { value: "lunch", label: "午餐" },
-  { value: "dinner", label: "晚餐" },
   { value: "breakfastSnack", label: "加早餐" },
+  { value: "lunch", label: "午餐" },
   { value: "lunchSnack", label: "加午餐" },
+  { value: "dinner", label: "晚餐" },
   { value: "dinnerSnack", label: "加晚餐" },
 ]
+
+const mainMealOptions = [
+  { value: "breakfast", label: "早餐" },
+  { value: "lunch", label: "午餐" },
+  { value: "dinner", label: "晚餐" },
+] as const
+
+type MainMealType = (typeof mainMealOptions)[number]["value"]
 
 const aiPrompt = `请根据我提供的饮食文字或图片，估算热量、蛋白质、碳水、脂肪，并只返回合法 JSON，不要解释。
 
@@ -70,6 +78,16 @@ export function FoodPage() {
   const [jsonText, setJsonText] = useState("")
   const [mealType, setMealType] = useState<MealType>("lunch")
   const parsedMeal = useMemo(() => parseMealJson(jsonText), [jsonText])
+  const mealState = splitMealType(mealType)
+  const mainMealIndex = mainMealOptions.findIndex((item) => item.value === mealState.main)
+
+  function selectMainMeal(main: MainMealType) {
+    setMealType(composeMealType(main, mealState.snack))
+  }
+
+  function toggleSnack() {
+    setMealType(composeMealType(mealState.main, !mealState.snack))
+  }
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(aiPrompt)
@@ -100,24 +118,44 @@ export function FoodPage() {
             onChange={(event) => setJsonText(event.target.value)}
             placeholder='{"calories":690,"protein":58,"carbs":68,"fat":19,"items":[]}'
           />
-          <div className="grid grid-cols-3 gap-2">
-            {mealTypeOptions.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                className={cn(
-                  "h-12 rounded-3xl text-sm font-semibold transition active:scale-95",
-                  mealType === item.value ? "bg-primary text-primary-foreground" : "bg-white/70 text-muted-foreground",
-                )}
-                onClick={() => setMealType(item.value)}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div className="relative grid grid-cols-3 rounded-full bg-muted/45 p-1">
+              <div
+                className="absolute left-1 top-1 h-10 w-[calc((100%-0.5rem)/3)] rounded-full bg-primary shadow-[0_8px_18px_rgba(23,105,166,0.2)] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                style={{ transform: `translateX(${Math.max(mainMealIndex, 0) * 100}%)` }}
+                aria-hidden="true"
+              />
+              {mainMealOptions.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={cn(
+                    "relative z-10 h-10 rounded-full text-sm font-semibold transition active:scale-95",
+                    mealState.main === item.value ? "text-primary-foreground" : "text-muted-foreground",
+                  )}
+                  onClick={() => selectMainMeal(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className={cn(
+                "flex h-12 min-w-20 items-center justify-center rounded-full px-4 text-sm font-semibold transition active:scale-95",
+                mealState.snack ? "bg-primary text-primary-foreground shadow-[0_8px_18px_rgba(23,105,166,0.2)]" : "bg-muted/45 text-muted-foreground",
+              )}
+              aria-pressed={mealState.snack}
+              onClick={toggleSnack}
+            >
+              加餐
+            </button>
           </div>
-          <p className={`text-sm ${jsonText && !parsedMeal ? "text-red-500" : "text-muted-foreground"}`}>
-            {jsonText ? (parsedMeal ? "JSON 已识别" : "JSON 格式不正确") : "粘贴 AI JSON"}
-          </p>
+          {jsonText ? (
+            <p className={`text-sm ${parsedMeal ? "text-muted-foreground" : "text-red-500"}`}>
+              {parsedMeal ? "JSON 已识别" : "JSON 格式不正确"}
+            </p>
+          ) : null}
           <Button className="w-full rounded-3xl" size="lg" onClick={copyPrompt}>
             <Clipboard className="h-5 w-5" />
             提示词
@@ -254,6 +292,38 @@ function normalizeMealItem(value: unknown): MealDraftItem | null {
     carbs: toNumber(item.carbs),
     fat: toNumber(item.fat),
   }
+}
+
+function splitMealType(type: MealType): { main: MainMealType; snack: boolean } {
+  if (type === "breakfastSnack") {
+    return { main: "breakfast", snack: true }
+  }
+
+  if (type === "lunchSnack") {
+    return { main: "lunch", snack: true }
+  }
+
+  if (type === "dinnerSnack") {
+    return { main: "dinner", snack: true }
+  }
+
+  return { main: type, snack: false }
+}
+
+function composeMealType(main: MainMealType, snack: boolean): MealType {
+  if (!snack) {
+    return main
+  }
+
+  if (main === "breakfast") {
+    return "breakfastSnack"
+  }
+
+  if (main === "lunch") {
+    return "lunchSnack"
+  }
+
+  return "dinnerSnack"
 }
 
 function toNumber(value: unknown, fallback = 0) {
