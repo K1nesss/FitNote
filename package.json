@@ -7,9 +7,11 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "worker:dev": "wrangler dev worker/index.ts",
+    "worker:dev": "wrangler dev --config wrangler.test.toml",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply fitnote-db --local"
+    "db:migrate": "npm run db:migrate:local",
+    "db:migrate:local": "wrangler d1 migrations apply fitnote-db --local --config wrangler.test.toml",
+    "db:migrate:remote": "wrangler d1 migrations apply fitnote-db --remote --config wrangler.toml"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.1",
