@@ -4,18 +4,25 @@ import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LoadingState } from "@/components/ui/state"
+import { useAppData } from "@/lib/app-data"
 import { useTheme } from "@/lib/theme"
-
-const settings = [
-  { label: "目标", value: "2200 kcal", icon: UserRound, href: "/profile/settings/goals" },
-  { label: "提醒", value: "开启", icon: Bell, href: "/profile/settings/reminders" },
-  { label: "外观", value: "theme", icon: Moon, href: "/profile/settings/appearance" },
-  { label: "数据", value: "本地 D1", icon: Database, href: "/profile/settings/data" },
-  { label: "隐私", value: "仅自己", icon: Shield, href: "/profile/settings/privacy" },
-]
 
 export function ProfilePage() {
   const { theme } = useTheme()
+  const { data, loading } = useAppData()
+
+  if (loading || !data) {
+    return <LoadingState title="个人" />
+  }
+
+  const settings = [
+    { label: "目标", value: `${data.profile.goals.calories} kcal`, icon: UserRound, href: "/profile/settings/goals" },
+    { label: "提醒", value: "开启", icon: Bell, href: "/profile/settings/reminders" },
+    { label: "外观", value: "theme", icon: Moon, href: "/profile/settings/appearance" },
+    { label: "数据", value: "D1", icon: Database, href: "/profile/settings/data" },
+    { label: "隐私", value: "仅自己", icon: Shield, href: "/profile/settings/privacy" },
+  ]
 
   return (
     <div className="space-y-5">
@@ -23,11 +30,11 @@ export function ProfilePage() {
         <CardContent className="flex items-center gap-4 p-5">
           <div className="liquid-control flex h-20 w-20 shrink-0 items-center justify-center rounded-[2rem]">
             <span className="relative z-10 flex h-16 w-16 items-center justify-center rounded-[1.55rem] bg-primary text-2xl font-semibold text-primary-foreground">
-              S
+              {data.profile.name.slice(0, 1).toUpperCase()}
             </span>
           </div>
           <div className="min-w-0">
-            <h2 className="text-3xl font-semibold tracking-normal">Sean</h2>
+            <h2 className="text-3xl font-semibold tracking-normal">{data.profile.name}</h2>
             <p className="mt-1 text-sm text-muted-foreground">FitNote</p>
           </div>
         </CardContent>

@@ -1,11 +1,12 @@
 import { Activity, ArrowRight, Dumbbell, Flame, UserRound } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import { useAppData } from "@/lib/app-data"
 
 const steps = [
   { label: "资料", icon: UserRound },
@@ -16,6 +17,8 @@ const steps = [
 
 export function OnboardingPage() {
   const { showToast } = useToast()
+  const navigate = useNavigate()
+  const { data, saveProfile } = useAppData()
   const [profile, setProfile] = useState({
     name: "Sean",
     height: "",
@@ -26,6 +29,37 @@ export function OnboardingPage() {
     fat: "70",
     days: "4 天",
   })
+
+  useEffect(() => {
+    if (data) {
+      setProfile((current) => ({
+        ...current,
+        name: data.profile.name,
+        height: data.profile.heightCm ? String(data.profile.heightCm) : current.height,
+        weight: data.profile.weightKg ? String(data.profile.weightKg) : current.weight,
+        calories: String(data.profile.goals.calories),
+        protein: String(data.profile.goals.protein),
+        carbs: String(data.profile.goals.carbs),
+        fat: String(data.profile.goals.fat),
+      }))
+    }
+  }, [data])
+
+  async function finish() {
+    await saveProfile({
+      name: profile.name,
+      heightCm: Number(profile.height) || null,
+      weightKg: Number(profile.weight) || null,
+      goals: {
+        calories: Number(profile.calories) || 2200,
+        protein: Number(profile.protein) || 150,
+        carbs: Number(profile.carbs) || 240,
+        fat: Number(profile.fat) || 70,
+      },
+    })
+    showToast({ title: "已保存" })
+    navigate("/workout/plan", { replace: true })
+  }
 
   return (
     <div className="space-y-5">
@@ -119,16 +153,9 @@ export function OnboardingPage() {
         </CardContent>
       </Card>
 
-      <Button
-        asChild
-        className="w-full rounded-3xl"
-        size="lg"
-        onClick={() => showToast({ title: "已完成", description: "资料已保存在前端状态。" })}
-      >
-        <Link to="/">
-          完成
-          <ArrowRight className="h-5 w-5" />
-        </Link>
+      <Button className="w-full rounded-3xl" size="lg" onClick={finish}>
+        完成
+        <ArrowRight className="h-5 w-5" />
       </Button>
     </div>
   )

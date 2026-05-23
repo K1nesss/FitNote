@@ -3,16 +3,25 @@ import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { macroGoal, todayMacro, todayPlan } from "@/data/mock"
-
-const macroItems = [
-  { label: "蛋白质", value: todayMacro.protein, goal: macroGoal.protein, unit: "g" },
-  { label: "碳水", value: todayMacro.carbs, goal: macroGoal.carbs, unit: "g" },
-  { label: "脂肪", value: todayMacro.fat, goal: macroGoal.fat, unit: "g" },
-]
+import { EmptyState, LoadingState } from "@/components/ui/state"
+import { useAppData } from "@/lib/app-data"
 
 export function DashboardPage() {
+  const { data, loading } = useAppData()
+
+  if (loading || !data) {
+    return <LoadingState title="FitNote" />
+  }
+
+  const todayMacro = data.todayMacro
+  const macroGoal = data.profile.goals
+  const todayPlan = data.todayPlan
   const caloriesPercent = Math.min(todayMacro.calories / macroGoal.calories, 1)
+  const macroItems = [
+    { label: "蛋白质", value: todayMacro.protein, goal: macroGoal.protein, unit: "g" },
+    { label: "碳水", value: todayMacro.carbs, goal: macroGoal.carbs, unit: "g" },
+    { label: "脂肪", value: todayMacro.fat, goal: macroGoal.fat, unit: "g" },
+  ]
 
   return (
     <div className="space-y-5">
@@ -58,7 +67,7 @@ export function DashboardPage() {
 
       <section className="grid grid-cols-2 gap-3">
         <Button asChild size="lg" className="h-16 rounded-3xl">
-          <Link to="/workout/session">
+          <Link to={todayPlan?.exercises.length ? "/workout/session" : "/workout/plan"}>
             <Dumbbell className="h-5 w-5" />
             训练
           </Link>
@@ -75,29 +84,33 @@ export function DashboardPage() {
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <CardTitle>{todayPlan.title}</CardTitle>
+              <CardTitle>{todayPlan?.title ?? "今日计划"}</CardTitle>
             </div>
             <div className="rounded-full bg-white/46 px-3 py-1 text-xs font-semibold text-muted-foreground">
-              {todayPlan.duration}
+              {todayPlan?.exercises.length ?? 0}
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {todayPlan.exercises.slice(0, 3).map((exercise) => (
-            <div key={exercise.id} className="flex items-center justify-between rounded-3xl bg-white/70 p-4">
-              <div>
-                <p className="font-medium">{exercise.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {exercise.sets} 组 x {exercise.reps} 次 · {exercise.weight} kg
-                </p>
+          {todayPlan?.exercises.length ? (
+            todayPlan.exercises.slice(0, 3).map((exercise) => (
+              <div key={exercise.id} className="flex items-center justify-between rounded-3xl bg-white/70 p-4">
+                <div>
+                  <p className="font-medium">{exercise.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {exercise.sets} 组 x {exercise.reps} 次 · {exercise.weight} kg
+                  </p>
+                </div>
+                <div className="rounded-full bg-white/46 px-3 py-1 text-xs font-semibold text-muted-foreground">
+                  {exercise.muscle}
+                </div>
               </div>
-              <div className="rounded-full bg-white/46 px-3 py-1 text-xs font-semibold text-muted-foreground">
-                {exercise.muscle}
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <EmptyState icon={Dumbbell} title="未设置" />
+          )}
           <Button asChild variant="ghost" className="w-full">
-            <Link to="/workout" aria-label="查看计划">
+            <Link to={todayPlan?.exercises.length ? "/workout" : "/workout/plan"} aria-label="查看计划">
               计划
               <ArrowRight className="h-4 w-4" />
             </Link>

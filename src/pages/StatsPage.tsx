@@ -2,9 +2,19 @@ import { Activity, Dumbbell, TrendingUp } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { foodTrend, macroGoal, todayMacro } from "@/data/mock"
+import { EmptyState, LoadingState } from "@/components/ui/state"
+import { useAppData } from "@/lib/app-data"
 
 export function StatsPage() {
+  const { data, loading } = useAppData()
+
+  if (loading || !data) {
+    return <LoadingState title="统计" />
+  }
+
+  const foodTrend = data.stats.foodTrend
+  const macroGoal = data.profile.goals
+  const todayMacro = data.todayMacro
   const maxCalories = Math.max(...foodTrend.map((item) => item.calories), macroGoal.calories)
 
   return (
@@ -28,7 +38,7 @@ export function StatsPage() {
               <Dumbbell className="h-5 w-5" />
             </div>
             <p className="text-sm text-muted-foreground">7d</p>
-            <p className="mt-1 text-2xl font-semibold">4 次</p>
+            <p className="mt-1 text-2xl font-semibold">{data.stats.trainingCount7d} 次</p>
             </Link>
           </CardContent>
         </Card>
@@ -67,22 +77,22 @@ export function StatsPage() {
           </Link>
         </CardHeader>
         <CardContent className="space-y-4">
-          {[
-            ["卧推", "70 kg", "近 4 周 +5 kg", 82],
-            ["深蹲", "105 kg", "近 4 周 +7.5 kg", 76],
-            ["硬拉", "130 kg", "近 4 周 +10 kg", 88],
-          ].map(([name, value, note, percent]) => (
-            <div key={name} className="space-y-2 rounded-3xl bg-muted/60 p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{name}</span>
-                <span>{value}</span>
+          {data.stats.exerciseTrends.length ? (
+            data.stats.exerciseTrends.slice(0, 3).map((trend) => (
+              <div key={trend.name} className="space-y-2 rounded-3xl bg-muted/60 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{trend.name}</span>
+                  <span>{trend.current} kg</span>
+                </div>
+                <div className="h-2 rounded-full bg-white">
+                  <div className="h-full rounded-full bg-secondary" style={{ width: `${Math.min((trend.current / Math.max(trend.best, 1)) * 100, 100)}%` }} />
+                </div>
+                <p className="text-sm text-muted-foreground">{trend.change >= 0 ? "+" : ""}{trend.change} kg</p>
               </div>
-              <div className="h-2 rounded-full bg-white">
-                <div className="h-full rounded-full bg-secondary" style={{ width: `${percent}%` }} />
-              </div>
-              <p className="text-sm text-muted-foreground">{note}</p>
-            </div>
-          ))}
+            ))
+          ) : (
+            <EmptyState icon={TrendingUp} title="暂无" />
+          )}
         </CardContent>
       </Card>
     </div>

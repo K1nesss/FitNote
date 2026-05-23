@@ -1,10 +1,9 @@
 import { Activity, Dumbbell, TrendingUp } from "lucide-react"
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState } from "@/components/ui/state"
-import { foodTrend, macroGoal } from "@/data/mock"
+import { EmptyState, LoadingState } from "@/components/ui/state"
+import { useAppData } from "@/lib/app-data"
 
 const detailMap = {
   nutrition: { title: "营养", icon: Activity },
@@ -16,6 +15,11 @@ export function StatsDetailPage() {
   const type = (useParams().type ?? "nutrition") as keyof typeof detailMap
   const detail = detailMap[type] ?? detailMap.nutrition
   const Icon = detail.icon
+  const { data, loading } = useAppData()
+
+  if (loading || !data) {
+    return <LoadingState title={detail.title} />
+  }
 
   return (
     <div className="space-y-5">
@@ -28,27 +32,23 @@ export function StatsDetailPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>{renderDetail(type)}</CardContent>
+        <CardContent>{renderDetail(type, data)}</CardContent>
       </Card>
-
-      <Button asChild variant="quiet" className="w-full">
-        <Link to="/stats">返回</Link>
-      </Button>
     </div>
   )
 }
 
-function renderDetail(type: keyof typeof detailMap) {
+function renderDetail(type: keyof typeof detailMap, data: NonNullable<ReturnType<typeof useAppData>["data"]>) {
   if (type === "nutrition") {
     return (
       <div className="space-y-4">
         <div className="flex h-52 items-end gap-3">
-          {foodTrend.map((item) => (
+          {data.stats.foodTrend.map((item) => (
             <div key={item.day} className="flex flex-1 flex-col items-center gap-2">
               <div className="flex h-40 w-full items-end rounded-full bg-muted/70 p-1">
                 <div
                   className="w-full rounded-full bg-primary"
-                  style={{ height: `${(item.calories / macroGoal.calories) * 100}%` }}
+                  style={{ height: `${(item.calories / Math.max(data.profile.goals.calories, 1)) * 100}%` }}
                 />
               </div>
               <span className="text-xs text-muted-foreground">{item.day}</span>
@@ -56,10 +56,17 @@ function renderDetail(type: keyof typeof detailMap) {
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {["热量", "蛋白质", "碳水"].map((label) => (
+          {[
+            ["热量", data.todayMacro.calories, "kcal"],
+            ["蛋白质", data.todayMacro.protein, "g"],
+            ["碳水", data.todayMacro.carbs, "g"],
+          ].map(([label, value, unit]) => (
             <div key={label} className="rounded-3xl bg-white/70 p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-xl font-semibold">达标</p>
+              <p className="mt-1 text-xl font-semibold">
+                {value}
+                <span className="text-sm text-muted-foreground">{unit}</span>
+              </p>
             </div>
           ))}
         </div>
@@ -68,37 +75,41 @@ function renderDetail(type: keyof typeof detailMap) {
   }
 
   if (type === "training") {
-    return (
+    return data.stats.trainingDays.length ? (
       <div className="space-y-3">
-        {["周一 下肢", "周三 推", "周五 上肢", "周六 拉"].map((item, index) => (
-          <div key={item} className="flex items-center justify-between rounded-3xl bg-white/70 p-4">
-            <p className="font-medium">{item}</p>
-            <p className="text-sm text-muted-foreground">{index + 1}</p>
+        {data.stats.trainingDays.map((item) => (
+          <div key={item.id} className="flex items-center justify-between rounded-3xl bg-white/70 p-4">
+            <p className="font-medium">{item.date}</p>
+            <p className="text-sm text-muted-foreground">{item.order}</p>
           </div>
         ))}
       </div>
+    ) : (
+      <EmptyState icon={Dumbbell} title="暂无" />
     )
   }
 
   if (type === "exercises") {
-    return (
+    return data.stats.exerciseTrends.length ? (
       <div className="space-y-4">
-        {[
-          ["卧推", "70 kg", 82],
-          ["深蹲", "105 kg", 76],
-          ["硬拉", "130 kg", 88],
-        ].map(([name, value, percent]) => (
-          <div key={name as string} className="rounded-3xl bg-white/70 p-4">
+        {data.stats.exerciseTrends.map((trend) => (
+          <div key={trend.name} className="rounded-3xl bg-white/70 p-4">
             <div className="flex items-center justify-between">
-              <p className="font-medium">{name as string}</p>
-              <p>{value as string}</p>
+              <p className="font-medium">{trend.name}</p>
+              <p>{trend.current} kg</p>
             </div>
             <div className="mt-3 h-2 rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min((trend.current / Math.max(trend.best, 1)) * 100, 100)}%` }} />
             </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {trend.change >= 0 ? "+" : ""}
+              {trend.change} kg
+            </p>
           </div>
         ))}
       </div>
+    ) : (
+      <EmptyState icon={TrendingUp} title="暂无" />
     )
   }
 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toast"
-import { recentMeals } from "@/data/mock"
+import { useAppData } from "@/lib/app-data"
 
 export type MealDraftItem = {
   name: string
@@ -50,6 +50,7 @@ JSON 格式：
 export function FoodPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { data } = useAppData()
   const [jsonText, setJsonText] = useState("")
   const parsedMeal = useMemo(() => parseMealJson(jsonText), [jsonText])
 
@@ -139,7 +140,7 @@ export function FoodPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">今日记录</h2>
-        {recentMeals.map((meal) => (
+        {(data?.recentMeals ?? []).map((meal) => (
           <Card key={meal.id}>
             <CardContent className="flex items-center justify-between gap-4 p-4">
               <div>

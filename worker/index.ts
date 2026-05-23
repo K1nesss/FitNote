@@ -4,39 +4,657 @@ export interface Env {
   AI_API_KEY?: string
 }
 
+const defaultUserId = "default"
+const tzOffsetMs = 8 * 60 * 60 * 1000
+
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
 }
+
+const builtinExercises = [
+  ["barbell-bench-press", "杠铃卧推", "胸", 4, 8, 60],
+  ["incline-dumbbell-press", "上斜哑铃卧推", "胸", 4, 10, 22],
+  ["dumbbell-fly", "哑铃飞鸟", "胸", 3, 12, 12],
+  ["push-up", "俯卧撑", "胸", 4, 12, 0],
+  ["lat-pulldown", "高位下拉", "背", 4, 10, 45],
+  ["seated-row", "坐姿划船", "背", 4, 10, 50],
+  ["barbell-row", "杠铃划船", "背", 4, 8, 50],
+  ["pull-up", "引体向上", "背", 4, 6, 0],
+  ["deadlift", "硬拉", "背", 3, 5, 100],
+  ["dumbbell-shoulder-press", "哑铃肩推", "肩", 4, 10, 20],
+  ["lateral-raise", "侧平举", "肩", 4, 15, 8],
+  ["rear-delt-fly", "反向飞鸟", "肩", 3, 15, 8],
+  ["barbell-squat", "杠铃深蹲", "腿", 4, 6, 80],
+  ["leg-press", "腿举", "腿", 4, 10, 120],
+  ["romanian-deadlift", "罗马尼亚硬拉", "腿", 4, 8, 70],
+  ["leg-extension", "腿屈伸", "腿", 3, 12, 45],
+  ["leg-curl", "腿弯举", "腿", 3, 12, 35],
+  ["walking-lunge", "行走弓步", "腿", 3, 12, 20],
+  ["calf-raise", "提踵", "小腿", 4, 15, 40],
+  ["barbell-curl", "杠铃弯举", "二头", 3, 10, 25],
+  ["dumbbell-curl", "哑铃弯举", "二头", 3, 12, 12],
+  ["hammer-curl", "锤式弯举", "二头", 3, 12, 12],
+  ["triceps-pushdown", "绳索下压", "三头", 3, 12, 25],
+  ["skull-crusher", "仰卧臂屈伸", "三头", 3, 10, 25],
+  ["dips", "双杠臂屈伸", "三头", 3, 8, 0],
+  ["plank", "平板支撑", "核心", 3, 60, 0],
+  ["crunch", "卷腹", "核心", 3, 15, 0],
+  ["hanging-leg-raise", "悬垂举腿", "核心", 3, 12, 0],
+  ["treadmill", "跑步机", "有氧", 1, 30, 0],
+  ["bike", "动感单车", "有氧", 1, 30, 0],
+] as const
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
-    if (url.pathname === "/api/health") {
-      return Response.json({ ok: true, service: "fitnote" }, { headers: jsonHeaders })
-    }
+    try {
+      if (url.pathname === "/api/health") {
+        return json({ ok: true, service: "fitnote", db: Boolean(env.DB) })
+      }
 
-    if (url.pathname === "/api/ai/estimate-meal" && request.method === "POST") {
-      return Response.json(
-        {
-          calories: 690,
-          protein: 58,
-          carbs: 68,
-          fat: 19,
-          items: [
-            { name: "米饭", calories: 260, protein: 5, carbs: 58, fat: 1 },
-            { name: "鸡胸肉", calories: 220, protein: 42, carbs: 0, fat: 5 },
-            { name: "鸡蛋", calories: 210, protein: 11, carbs: 10, fat: 13 },
-          ],
-        },
-        { headers: jsonHeaders },
-      )
-    }
+      if (url.pathname === "/api/bootstrap" && request.method === "GET") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        return json(await getBootstrap(db))
+      }
 
-    if (url.pathname.startsWith("/api/")) {
-      return Response.json({ error: "Not found" }, { status: 404, headers: jsonHeaders })
-    }
+      if (url.pathname === "/api/profile" && request.method === "PUT") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const body = await readBody<ProfileInput>(request)
+        await saveProfile(db, body)
+        return json(await getBootstrap(db))
+      }
 
-    return env.ASSETS.fetch(request)
+      if (url.pathname === "/api/exercises" && request.method === "POST") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const body = await readBody<ExerciseInput>(request)
+        await createLibraryExercise(db, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname.startsWith("/api/plans/") && request.method === "PUT") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const weekday = Number(url.pathname.replace("/api/plans/", ""))
+        const body = await readBody<PlanInput>(request)
+        await savePlan(db, weekday, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname === "/api/meals" && request.method === "POST") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const body = await readBody<MealInput>(request)
+        await saveMeal(db, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname === "/api/workout-sessions" && request.method === "POST") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const body = await readBody<WorkoutSessionInput>(request)
+        await saveWorkoutSession(db, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname.startsWith("/api/")) {
+        return json({ error: "Not found" }, 404)
+      }
+
+      return env.ASSETS.fetch(request)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      return json({ error: message }, 500)
+    }
   },
 } satisfies ExportedHandler<Env>
+
+type ProfileInput = {
+  name?: string
+  heightCm?: number | string | null
+  weightKg?: number | string | null
+  goals?: MacroInput
+}
+
+type MacroInput = {
+  calories?: number | string
+  protein?: number | string
+  carbs?: number | string
+  fat?: number | string
+}
+
+type ExerciseInput = {
+  name?: string
+  muscleGroup?: string
+  defaultSets?: number | string
+  defaultReps?: number | string
+  defaultWeight?: number | string
+}
+
+type PlanInput = {
+  title?: string
+  exercises?: Array<ExerciseInput & { id?: string; libraryExerciseId?: string; sortOrder?: number }>
+}
+
+type MealInput = MacroInput & {
+  rawText?: string
+  items?: Array<MacroInput & { name?: string }>
+}
+
+type WorkoutSessionInput = {
+  planId?: string
+  startedAt?: number
+  finishedAt?: number
+  sets?: Array<{ exerciseId?: string; setIndex?: number; actualReps?: number; actualWeight?: number }>
+}
+
+function getDB(env: Env) {
+  if (!env.DB) {
+    throw new Error("D1 binding DB is not configured")
+  }
+
+  return env.DB
+}
+
+function json(value: unknown, status = 200) {
+  return Response.json(value, { status, headers: jsonHeaders })
+}
+
+async function readBody<T>(request: Request): Promise<T> {
+  try {
+    return (await request.json()) as T
+  } catch {
+    throw new Error("Invalid JSON body")
+  }
+}
+
+async function ensureDefaults(db: D1Database) {
+  const now = Date.now()
+
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO users (id, name, height_cm, weight_kg, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(defaultUserId, "Sean", null, null, now, now)
+    .run()
+
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO nutrition_goals (user_id, calories, protein, carbs, fat, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(defaultUserId, 2200, 150, 240, 70, now)
+    .run()
+
+  const count = await db
+    .prepare("SELECT COUNT(*) as count FROM exercise_library WHERE is_builtin = 1")
+    .first<{ count: number }>()
+
+  if ((count?.count ?? 0) < builtinExercises.length) {
+    await db.batch(
+      builtinExercises.map(([id, name, muscle, sets, reps, weight]) =>
+        db
+          .prepare(
+            "INSERT OR IGNORE INTO exercise_library (id, user_id, name, muscle_group, default_sets, default_reps, default_weight, is_builtin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(id, null, name, muscle, sets, reps, weight, 1, now),
+      ),
+    )
+  }
+}
+
+async function getBootstrap(db: D1Database) {
+  const now = Date.now()
+  const todayStart = startOfDay(now)
+  const tomorrowStart = todayStart + 24 * 60 * 60 * 1000
+  const weekStart = todayStart - 6 * 24 * 60 * 60 * 1000
+  const weekday = getChinaWeekday(now)
+
+  const profile = await db
+    .prepare(
+      `SELECT u.id, u.name, u.height_cm as heightCm, u.weight_kg as weightKg,
+        g.calories, g.protein, g.carbs, g.fat
+       FROM users u
+       LEFT JOIN nutrition_goals g ON g.user_id = u.id
+       WHERE u.id = ?`,
+    )
+    .bind(defaultUserId)
+    .first<Record<string, number | string | null>>()
+
+  const exerciseRows = await allRows(db, "SELECT id, user_id as userId, name, muscle_group as muscleGroup, default_sets as defaultSets, default_reps as defaultReps, default_weight as defaultWeight, is_builtin as isBuiltin FROM exercise_library ORDER BY is_builtin DESC, name ASC")
+
+  const plans = await getPlans(db)
+  const todayPlan = plans.find((plan) => plan.weekday === weekday) ?? null
+  const todayMeals = await allRows(
+    db,
+    "SELECT id, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC",
+    [defaultUserId, todayStart, tomorrowStart],
+  )
+  const todayMacro = sumMacros(todayMeals)
+  const recentMeals = await getRecentMeals(db)
+  const workoutHistory = await getWorkoutHistory(db)
+  const stats = await getStats(db, weekStart, todayStart)
+
+  return {
+    profile: {
+      id: defaultUserId,
+      name: String(profile?.name ?? "Sean"),
+      heightCm: nullableNumber(profile?.heightCm),
+      weightKg: nullableNumber(profile?.weightKg),
+      goals: {
+        calories: toNumber(profile?.calories, 2200),
+        protein: toNumber(profile?.protein, 150),
+        carbs: toNumber(profile?.carbs, 240),
+        fat: toNumber(profile?.fat, 70),
+      },
+    },
+    exerciseLibrary: exerciseRows.map((row) => ({
+      id: String(row.id),
+      userId: row.userId ? String(row.userId) : null,
+      name: String(row.name),
+      muscleGroup: String(row.muscleGroup),
+      defaultSets: toNumber(row.defaultSets, 3),
+      defaultReps: toNumber(row.defaultReps, 10),
+      defaultWeight: toNumber(row.defaultWeight, 0),
+      isBuiltin: Boolean(row.isBuiltin),
+    })),
+    plans,
+    todayPlan,
+    todayMacro,
+    todayMeals,
+    recentMeals,
+    workoutHistory,
+    stats,
+  }
+}
+
+async function getPlans(db: D1Database) {
+  const planRows = await allRows(
+    db,
+    "SELECT id, weekday, title, created_at as createdAt FROM workout_plans WHERE user_id = ? ORDER BY weekday ASC",
+    [defaultUserId],
+  )
+  const exerciseRows = await allRows(
+    db,
+    "SELECT id, plan_id as planId, library_exercise_id as libraryExerciseId, name, muscle_group as muscleGroup, target_sets as sets, target_reps as reps, target_weight as weight, sort_order as sortOrder FROM workout_exercises ORDER BY sort_order ASC",
+  )
+
+  return planRows.map((plan) => ({
+    id: String(plan.id),
+    weekday: toNumber(plan.weekday),
+    title: String(plan.title),
+    createdAt: toNumber(plan.createdAt),
+    exercises: exerciseRows
+      .filter((exercise) => exercise.planId === plan.id)
+      .map((exercise) => ({
+        id: String(exercise.id),
+        libraryExerciseId: exercise.libraryExerciseId ? String(exercise.libraryExerciseId) : null,
+        name: String(exercise.name),
+        muscle: String(exercise.muscleGroup),
+        sets: toNumber(exercise.sets, 3),
+        reps: toNumber(exercise.reps, 10),
+        weight: toNumber(exercise.weight, 0),
+        order: toNumber(exercise.sortOrder, 1),
+      })),
+  }))
+}
+
+async function saveProfile(db: D1Database, input: ProfileInput) {
+  const now = Date.now()
+  const name = normalizeText(input.name, "Sean")
+
+  await db
+    .prepare("UPDATE users SET name = ?, height_cm = ?, weight_kg = ?, updated_at = ? WHERE id = ?")
+    .bind(name, nullableNumber(input.heightCm), nullableNumber(input.weightKg), now, defaultUserId)
+    .run()
+
+  if (input.goals) {
+    await db
+      .prepare(
+        `INSERT INTO nutrition_goals (user_id, calories, protein, carbs, fat, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET calories = excluded.calories, protein = excluded.protein, carbs = excluded.carbs, fat = excluded.fat, updated_at = excluded.updated_at`,
+      )
+      .bind(
+        defaultUserId,
+        toNumber(input.goals.calories, 2200),
+        toNumber(input.goals.protein, 150),
+        toNumber(input.goals.carbs, 240),
+        toNumber(input.goals.fat, 70),
+        now,
+      )
+      .run()
+  }
+}
+
+async function createLibraryExercise(db: D1Database, input: ExerciseInput) {
+  const name = normalizeText(input.name, "")
+  const muscle = normalizeText(input.muscleGroup, "")
+
+  if (!name || !muscle) {
+    throw new Error("Exercise name and muscle group are required")
+  }
+
+  await db
+    .prepare(
+      "INSERT INTO exercise_library (id, user_id, name, muscle_group, default_sets, default_reps, default_weight, is_builtin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(
+      crypto.randomUUID(),
+      defaultUserId,
+      name,
+      muscle,
+      Math.max(1, toNumber(input.defaultSets, 3)),
+      Math.max(1, toNumber(input.defaultReps, 10)),
+      Math.max(0, toNumber(input.defaultWeight, 0)),
+      0,
+      Date.now(),
+    )
+    .run()
+}
+
+async function savePlan(db: D1Database, weekday: number, input: PlanInput) {
+  if (!Number.isInteger(weekday) || weekday < 1 || weekday > 7) {
+    throw new Error("Invalid weekday")
+  }
+
+  const now = Date.now()
+  const planId = `plan-${defaultUserId}-${weekday}`
+  const exercises = Array.isArray(input.exercises) ? input.exercises : []
+
+  await db
+    .prepare(
+      `INSERT INTO workout_plans (id, user_id, weekday, title, created_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET title = excluded.title`,
+    )
+    .bind(planId, defaultUserId, weekday, normalizeText(input.title, `周${weekdayLabel(weekday)}训练`), now)
+    .run()
+
+  await db.prepare("DELETE FROM workout_exercises WHERE plan_id = ?").bind(planId).run()
+
+  if (exercises.length > 0) {
+    await db.batch(
+      exercises.map((exercise, index) =>
+        db
+          .prepare(
+            "INSERT INTO workout_exercises (id, plan_id, library_exercise_id, name, muscle_group, target_sets, target_reps, target_weight, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(
+            crypto.randomUUID(),
+            planId,
+            exercise.libraryExerciseId ?? null,
+            normalizeText(exercise.name, "动作"),
+            normalizeText(exercise.muscleGroup, "训练"),
+            Math.max(1, toNumber(exercise.defaultSets, 3)),
+            Math.max(1, toNumber(exercise.defaultReps, 10)),
+            Math.max(0, toNumber(exercise.defaultWeight, 0)),
+            index + 1,
+          ),
+      ),
+    )
+  }
+}
+
+async function saveMeal(db: D1Database, input: MealInput) {
+  const now = Date.now()
+  const mealId = crypto.randomUUID()
+  const items = Array.isArray(input.items) ? input.items : []
+  const totals = normalizeMealTotals(input, items)
+
+  await db
+    .prepare(
+      "INSERT INTO meals (id, user_id, raw_text, calories, protein, carbs, fat, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(mealId, defaultUserId, normalizeText(input.rawText, "AI JSON"), totals.calories, totals.protein, totals.carbs, totals.fat, now)
+    .run()
+
+  if (items.length > 0) {
+    await db.batch(
+      items.map((item) => {
+        const normalized = normalizeMealItem(item)
+        return db
+          .prepare("INSERT INTO meal_items (id, meal_id, name, calories, protein, carbs, fat) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .bind(crypto.randomUUID(), mealId, normalized.name, normalized.calories, normalized.protein, normalized.carbs, normalized.fat)
+      }),
+    )
+  }
+}
+
+async function saveWorkoutSession(db: D1Database, input: WorkoutSessionInput) {
+  const now = Date.now()
+  const sessionId = crypto.randomUUID()
+  const sets = Array.isArray(input.sets) ? input.sets.filter((set) => set.exerciseId) : []
+
+  await db
+    .prepare("INSERT INTO workout_sessions (id, user_id, plan_id, started_at, finished_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(sessionId, defaultUserId, input.planId ?? null, input.startedAt ?? now, input.finishedAt ?? now)
+    .run()
+
+  if (sets.length > 0) {
+    await db.batch(
+      sets.map((set, index) =>
+        db
+          .prepare(
+            "INSERT INTO workout_sets (id, session_id, exercise_id, set_index, actual_reps, actual_weight, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(
+            crypto.randomUUID(),
+            sessionId,
+            String(set.exerciseId),
+            set.setIndex ?? index + 1,
+            Math.max(0, toNumber(set.actualReps, 0)),
+            Math.max(0, toNumber(set.actualWeight, 0)),
+            now,
+          ),
+      ),
+    )
+  }
+}
+
+async function getRecentMeals(db: D1Database) {
+  const meals = await allRows(
+    db,
+    "SELECT id, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? ORDER BY created_at DESC LIMIT 10",
+    [defaultUserId],
+  )
+
+  return meals.map((meal) => ({
+    id: String(meal.id),
+    title: mealTitle(toNumber(meal.createdAt)),
+    note: String(meal.rawText),
+    calories: toNumber(meal.calories),
+    protein: toNumber(meal.protein),
+    carbs: toNumber(meal.carbs),
+    fat: toNumber(meal.fat),
+    createdAt: toNumber(meal.createdAt),
+  }))
+}
+
+async function getWorkoutHistory(db: D1Database) {
+  const rows = await allRows(
+    db,
+    `SELECT s.id, s.started_at as startedAt, s.finished_at as finishedAt, COALESCE(p.title, '训练') as title,
+      COUNT(ws.id) as sets, COALESCE(SUM(ws.actual_weight * ws.actual_reps), 0) as volume
+     FROM workout_sessions s
+     LEFT JOIN workout_plans p ON p.id = s.plan_id
+     LEFT JOIN workout_sets ws ON ws.session_id = s.id
+     WHERE s.user_id = ?
+     GROUP BY s.id
+     ORDER BY s.started_at DESC
+     LIMIT 20`,
+    [defaultUserId],
+  )
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    date: formatMonthDay(toNumber(row.startedAt)),
+    title: String(row.title),
+    volume: `${Math.round(toNumber(row.volume)).toLocaleString("en-US")} kg`,
+    sets: toNumber(row.sets),
+    startedAt: toNumber(row.startedAt),
+    finishedAt: nullableNumber(row.finishedAt),
+  }))
+}
+
+async function getStats(db: D1Database, weekStart: number, todayStart: number) {
+  const mealRows = await allRows(
+    db,
+    "SELECT calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? AND created_at >= ?",
+    [defaultUserId, weekStart],
+  )
+  const sessionRows = await allRows(
+    db,
+    "SELECT id, started_at as startedAt FROM workout_sessions WHERE user_id = ? AND started_at >= ? ORDER BY started_at ASC",
+    [defaultUserId, weekStart],
+  )
+  const setRows = await allRows(
+    db,
+    `SELECT e.name, ws.actual_weight as weight, ws.completed_at as completedAt
+     FROM workout_sets ws
+     JOIN workout_exercises e ON e.id = ws.exercise_id
+     JOIN workout_sessions s ON s.id = ws.session_id
+     WHERE s.user_id = ?
+     ORDER BY ws.completed_at ASC`,
+    [defaultUserId],
+  )
+
+  const foodTrend = Array.from({ length: 7 }, (_, index) => {
+    const start = todayStart - (6 - index) * 24 * 60 * 60 * 1000
+    const end = start + 24 * 60 * 60 * 1000
+    const rows = mealRows.filter((row) => toNumber(row.createdAt) >= start && toNumber(row.createdAt) < end)
+    const total = sumMacros(rows)
+
+    return {
+      day: weekdayLabel(getChinaWeekday(start)),
+      calories: total.calories,
+      protein: total.protein,
+      carbs: total.carbs,
+      fat: total.fat,
+    }
+  })
+
+  const exerciseMap = new Map<string, Array<{ weight: number; completedAt: number }>>()
+  for (const row of setRows) {
+    const name = String(row.name)
+    const list = exerciseMap.get(name) ?? []
+    list.push({ weight: toNumber(row.weight), completedAt: toNumber(row.completedAt) })
+    exerciseMap.set(name, list)
+  }
+
+  const exerciseTrends = Array.from(exerciseMap.entries())
+    .map(([name, rows]) => {
+      const first = rows[0]?.weight ?? 0
+      const current = rows[rows.length - 1]?.weight ?? 0
+      const best = Math.max(...rows.map((row) => row.weight), 0)
+
+      return { name, current, best, change: Math.round((current - first) * 10) / 10, points: rows.slice(-8) }
+    })
+    .sort((a, b) => b.best - a.best)
+    .slice(0, 6)
+
+  return {
+    foodTrend,
+    trainingCount7d: sessionRows.length,
+    trainingDays: sessionRows.map((row, index) => ({
+      id: String(row.id),
+      date: formatMonthDay(toNumber(row.startedAt)),
+      order: index + 1,
+    })),
+    exerciseTrends,
+  }
+}
+
+async function allRows(db: D1Database, sql: string, params: Array<string | number | null> = []) {
+  const result = await db.prepare(sql).bind(...params).all<Record<string, unknown>>()
+  return result.results ?? []
+}
+
+function normalizeMealTotals(input: MacroInput, items: MacroInput[]) {
+  const itemTotals = items.map(normalizeMealItem).reduce(
+    (acc, item) => ({
+      calories: acc.calories + item.calories,
+      protein: acc.protein + item.protein,
+      carbs: acc.carbs + item.carbs,
+      fat: acc.fat + item.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  )
+
+  return {
+    calories: toNumber(input.calories, itemTotals.calories),
+    protein: toNumber(input.protein, itemTotals.protein),
+    carbs: toNumber(input.carbs, itemTotals.carbs),
+    fat: toNumber(input.fat, itemTotals.fat),
+  }
+}
+
+function normalizeMealItem(input: MacroInput & { name?: string }) {
+  return {
+    name: normalizeText(input.name, "食物"),
+    calories: toNumber(input.calories),
+    protein: toNumber(input.protein),
+    carbs: toNumber(input.carbs),
+    fat: toNumber(input.fat),
+  }
+}
+
+function sumMacros(rows: Array<Record<string, unknown>>) {
+  return rows.reduce<{ calories: number; protein: number; carbs: number; fat: number }>(
+    (acc, row) => ({
+      calories: Math.round((acc.calories + toNumber(row.calories)) * 10) / 10,
+      protein: Math.round((acc.protein + toNumber(row.protein)) * 10) / 10,
+      carbs: Math.round((acc.carbs + toNumber(row.carbs)) * 10) / 10,
+      fat: Math.round((acc.fat + toNumber(row.fat)) * 10) / 10,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  )
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const number = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(number) ? Math.round(number * 10) / 10 : fallback
+}
+
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
+  return toNumber(value)
+}
+
+function normalizeText(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback
+}
+
+function startOfDay(timestamp: number) {
+  const shifted = new Date(timestamp + tzOffsetMs)
+  shifted.setUTCHours(0, 0, 0, 0)
+  return shifted.getTime() - tzOffsetMs
+}
+
+function getChinaWeekday(timestamp: number) {
+  const day = new Date(timestamp + tzOffsetMs).getUTCDay()
+  return day === 0 ? 7 : day
+}
+
+function weekdayLabel(weekday: number) {
+  return ["一", "二", "三", "四", "五", "六", "日"][Math.max(0, Math.min(6, weekday - 1))]
+}
+
+function formatMonthDay(timestamp: number) {
+  const date = new Date(timestamp + tzOffsetMs)
+  return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`
+}
+
+function mealTitle(timestamp: number) {
+  const hour = new Date(timestamp + tzOffsetMs).getUTCHours()
+
+  if (hour < 10) return "早餐"
+  if (hour < 15) return "午餐"
+  if (hour < 20) return "晚餐"
+  return "加餐"
+}

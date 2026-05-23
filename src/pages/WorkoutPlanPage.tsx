@@ -1,48 +1,83 @@
-import { ArrowDown, ArrowUp, BookOpen, GripVertical, Pencil, Plus, Trash2 } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
+import { ArrowDown, ArrowUp, BookOpen, Check, GripVertical, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { LoadingState } from "@/components/ui/state"
 import { useToast } from "@/components/ui/toast"
-import { todayPlan, weeklyPlan } from "@/data/mock"
+import { getTodayWeekday, useAppData, weekdayText } from "@/lib/app-data"
+import type { LibraryExercise, PlanExercise } from "@/lib/api"
 
 type ExerciseDraft = {
   id: string
+  libraryExerciseId: string | null
   name: string
-  muscle: string
-  sets: number
-  reps: number
-  weight: number
-  order: number
+  muscleGroup: string
+  defaultSets: number
+  defaultReps: number
+  defaultWeight: number
 }
 
+const weekdays = [1, 2, 3, 4, 5, 6, 7]
+
 export function WorkoutPlanPage() {
+  const { data, loading, savePlan, createExercise } = useAppData()
   const { showToast } = useToast()
-  const [selectedDay, setSelectedDay] = useState("周五")
-  const [exercises, setExercises] = useState<ExerciseDraft[]>(todayPlan.exercises)
+  const [selectedDay, setSelectedDay] = useState(getTodayWeekday())
+  const [title, setTitle] = useState("")
+  const [exercises, setExercises] = useState<ExerciseDraft[]>([])
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [customOpen, setCustomOpen] = useState(false)
+  const [query, setQuery] = useState("")
   const [editing, setEditing] = useState<ExerciseDraft | null>(null)
   const [selectedExercise, setSelectedExercise] = useState<ExerciseDraft | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [draft, setDraft] = useState({ name: "", muscle: "", sets: 3, reps: 10, weight: 0 })
+  const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
 
-  function addExercise() {
-    if (!draft.name.trim()) {
+  const currentPlan = data?.plans.find((plan) => plan.weekday === selectedDay)
+  const filteredLibrary = useMemo(() => {
+    const keyword = query.trim()
+    const library = data?.exerciseLibrary ?? []
+
+    if (!keyword) {
+      return library
+    }
+
+    return library.filter((exercise) => exercise.name.includes(keyword) || exercise.muscleGroup.includes(keyword))
+  }, [data?.exerciseLibrary, query])
+
+  useEffect(() => {
+    setTitle(currentPlan?.title ?? `${weekdayText(selectedDay)}训练`)
+    setExercises((currentPlan?.exercises ?? []).map(fromPlanExercise))
+  }, [currentPlan, selectedDay])
+
+  if (loading || !data) {
+    return <LoadingState title="训练计划" />
+  }
+
+  function addLibraryExercise(exercise: LibraryExercise) {
+    setExercises((current) => [...current, fromLibraryExercise(exercise)])
+    setLibraryOpen(false)
+    showToast({ title: "已添加" })
+  }
+
+  async function addCustomExercise() {
+    if (!draft.name.trim() || !draft.muscleGroup.trim()) {
       return
     }
 
-    setExercises((current) => [
-      ...current,
-      {
-        ...draft,
-        id: crypto.randomUUID(),
-        order: current.length + 1,
-      },
-    ])
-    setDraft({ name: "", muscle: "", sets: 3, reps: 10, weight: 0 })
-    showToast({ title: "已添加", description: "动作已加入计划。" })
+    const next = { ...draft, id: crypto.randomUUID(), libraryExerciseId: null }
+    await createExercise(draft)
+    setExercises((current) => [...current, next])
+    setDraft({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+    setCustomOpen(false)
+    showToast({ title: "已添加" })
+  }
+
+  async function saveCurrentPlan() {
+    await savePlan(selectedDay, { title, exercises })
+    showToast({ title: "已保存" })
   }
 
   function saveEditing() {
@@ -52,12 +87,10 @@ export function WorkoutPlanPage() {
 
     setExercises((current) => current.map((exercise) => (exercise.id === editing.id ? editing : exercise)))
     setEditing(null)
-    showToast({ title: "已保存" })
   }
 
   function deleteExercise(id: string) {
-    setExercises((current) => current.filter((exercise) => exercise.id !== id).map((exercise, index) => ({ ...exercise, order: index + 1 })))
-    showToast({ title: "已删除" })
+    setExercises((current) => current.filter((exercise) => exercise.id !== id))
   }
 
   function moveExercise(id: string, direction: -1 | 1) {
@@ -73,7 +106,7 @@ export function WorkoutPlanPage() {
       const [item] = next.splice(index, 1)
       next.splice(targetIndex, 0, item)
 
-      return next.map((exercise, orderIndex) => ({ ...exercise, order: orderIndex + 1 }))
+      return next
     })
   }
 
@@ -83,60 +116,55 @@ export function WorkoutPlanPage() {
         <CardHeader>
           <CardTitle className="text-3xl">训练计划</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-7 gap-2">
-            {weeklyPlan.map((item) => (
-              <button
-                key={item.day}
-                type="button"
-                onClick={() => setSelectedDay(item.day)}
-                className={`flex h-16 flex-col items-center justify-center rounded-3xl text-xs font-semibold transition active:scale-95 ${
-                  item.day === selectedDay
-                    ? "bg-primary text-primary-foreground shadow-[0_10px_24px_rgba(32,33,36,0.16)]"
-                    : "bg-white/62 text-muted-foreground"
-                }`}
-              >
-                <span>{item.day.replace("周", "")}</span>
-                <span className="mt-1 text-[10px] opacity-75">{item.count || "-"}</span>
-              </button>
-            ))}
+            {weekdays.map((weekday) => {
+              const plan = data.plans.find((item) => item.weekday === weekday)
+              return (
+                <button
+                  key={weekday}
+                  type="button"
+                  onClick={() => setSelectedDay(weekday)}
+                  className={`flex h-16 flex-col items-center justify-center rounded-3xl text-xs font-semibold transition active:scale-95 ${
+                    weekday === selectedDay ? "bg-primary text-primary-foreground" : "bg-white/62 text-muted-foreground"
+                  }`}
+                >
+                  <span>{weekdayText(weekday).replace("周", "")}</span>
+                  <span className="mt-1 text-[10px] opacity-75">{plan?.exercises.length || "-"}</span>
+                </button>
+              )
+            })}
           </div>
+          <Input value={title} onChange={(event) => setTitle(event.target.value)} />
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{selectedDay}动作</h2>
+        <h2 className="text-lg font-semibold">{weekdayText(selectedDay)}</h2>
         <div className="flex gap-2">
-          <Button asChild size="sm" variant="quiet" aria-label="动作库">
-            <Link to="/workout/library">
-              <BookOpen className="h-4 w-4" />
-            </Link>
+          <Button size="sm" variant="quiet" aria-label="动作库" onClick={() => setLibraryOpen(true)}>
+            <BookOpen className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="quiet" aria-label="添加动作" onClick={() => setAdding(true)}>
+          <Button size="sm" variant="quiet" aria-label="新增动作" onClick={() => setCustomOpen(true)}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       <div className="space-y-3">
-        {exercises.map((exercise) => (
+        {exercises.map((exercise, index) => (
           <Card key={exercise.id}>
             <CardContent
               className="grid min-h-20 grid-cols-[auto_1fr] items-center gap-3 p-4 active:scale-[0.99]"
               role="button"
               tabIndex={0}
               onClick={() => setSelectedExercise(exercise)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  setSelectedExercise(exercise)
-                }
-              }}
             >
               <GripVertical className="h-5 w-5 text-muted-foreground" />
               <div className="min-w-0">
                 <p className="truncate font-medium">{exercise.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {exercise.muscle} · {exercise.sets} x {exercise.reps} · {exercise.weight} kg
+                  {exercise.muscleGroup} · {exercise.defaultSets} x {exercise.defaultReps} · {exercise.defaultWeight} kg · {index + 1}
                 </p>
               </div>
             </CardContent>
@@ -144,47 +172,42 @@ export function WorkoutPlanPage() {
         ))}
       </div>
 
-      <Dialog open={adding} title="新增动作" onClose={() => setAdding(false)}>
-          <Input
-            placeholder="动作名称"
-            value={draft.name}
-            onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-          />
-          <Input
-            placeholder="肌群"
-            value={draft.muscle}
-            onChange={(event) => setDraft((current) => ({ ...current, muscle: event.target.value }))}
-          />
-          <div className="grid grid-cols-3 gap-2">
-            <Input
-              placeholder="组"
-              inputMode="numeric"
-              value={draft.sets}
-              onChange={(event) => setDraft((current) => ({ ...current, sets: Number(event.target.value) || 0 }))}
-            />
-            <Input
-              placeholder="次"
-              inputMode="numeric"
-              value={draft.reps}
-              onChange={(event) => setDraft((current) => ({ ...current, reps: Number(event.target.value) || 0 }))}
-            />
-            <Input
-              placeholder="kg"
-              inputMode="decimal"
-              value={draft.weight}
-              onChange={(event) => setDraft((current) => ({ ...current, weight: Number(event.target.value) || 0 }))}
-            />
-          </div>
-          <Button
-            className="w-full rounded-3xl"
-            onClick={() => {
-              addExercise()
-              setAdding(false)
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            添加
-          </Button>
+      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentPlan}>
+        <Check className="h-5 w-5" />
+        保存
+      </Button>
+
+      <Dialog open={libraryOpen} title="动作库" onClose={() => setLibraryOpen(false)}>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-10" placeholder="搜索" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </div>
+        <div className="max-h-[48vh] space-y-2 overflow-y-auto">
+          {filteredLibrary.map((exercise) => (
+            <button
+              key={exercise.id}
+              type="button"
+              className="flex w-full items-center justify-between gap-3 rounded-3xl bg-white/70 p-4 text-left transition active:scale-[0.99]"
+              onClick={() => addLibraryExercise(exercise)}
+            >
+              <span>
+                <span className="block font-medium">{exercise.name}</span>
+                <span className="block text-sm text-muted-foreground">
+                  {exercise.muscleGroup} · {exercise.defaultSets} x {exercise.defaultReps}
+                </span>
+              </span>
+              <Plus className="h-4 w-4" />
+            </button>
+          ))}
+        </div>
+      </Dialog>
+
+      <Dialog open={customOpen} title="新增动作" onClose={() => setCustomOpen(false)}>
+        <ExerciseInputs draft={draft} onChange={setDraft} />
+        <Button className="w-full rounded-3xl" onClick={addCustomExercise}>
+          <Plus className="h-4 w-4" />
+          添加
+        </Button>
       </Dialog>
 
       <Dialog open={Boolean(selectedExercise)} title={selectedExercise?.name ?? "动作"} onClose={() => setSelectedExercise(null)}>
@@ -211,7 +234,6 @@ export function WorkoutPlanPage() {
                 }}
               >
                 <ArrowUp className="h-4 w-4" />
-                上移
               </Button>
               <Button
                 variant="quiet"
@@ -222,7 +244,6 @@ export function WorkoutPlanPage() {
                 }}
               >
                 <ArrowDown className="h-4 w-4" />
-                下移
               </Button>
             </div>
             <Button
@@ -243,29 +264,8 @@ export function WorkoutPlanPage() {
       <Dialog open={Boolean(editing)} title="编辑动作" onClose={() => setEditing(null)}>
         {editing ? (
           <>
-            <Input
-              value={editing.name}
-              onChange={(event) => setEditing((current) => (current ? { ...current, name: event.target.value } : current))}
-            />
-            <Input
-              value={editing.muscle}
-              onChange={(event) => setEditing((current) => (current ? { ...current, muscle: event.target.value } : current))}
-            />
-            <div className="grid grid-cols-3 gap-2">
-              <Input
-                value={editing.sets}
-                onChange={(event) => setEditing((current) => (current ? { ...current, sets: Number(event.target.value) || 0 } : current))}
-              />
-              <Input
-                value={editing.reps}
-                onChange={(event) => setEditing((current) => (current ? { ...current, reps: Number(event.target.value) || 0 } : current))}
-              />
-              <Input
-                value={editing.weight}
-                onChange={(event) => setEditing((current) => (current ? { ...current, weight: Number(event.target.value) || 0 } : current))}
-              />
-            </div>
-            <Button className="w-full" onClick={saveEditing}>
+            <ExerciseInputs draft={editing} onChange={setEditing} />
+            <Button className="w-full rounded-3xl" onClick={saveEditing}>
               保存
             </Button>
           </>
@@ -273,4 +273,67 @@ export function WorkoutPlanPage() {
       </Dialog>
     </div>
   )
+}
+
+function ExerciseInputs<T extends Omit<ExerciseDraft, "id" | "libraryExerciseId">>({
+  draft,
+  onChange,
+}: {
+  draft: T
+  onChange: (value: T) => void
+}) {
+  return (
+    <>
+      <Input value={draft.name} placeholder="动作名称" onChange={(event) => onChange({ ...draft, name: event.target.value })} />
+      <Input
+        value={draft.muscleGroup}
+        placeholder="肌群"
+        onChange={(event) => onChange({ ...draft, muscleGroup: event.target.value })}
+      />
+      <div className="grid grid-cols-3 gap-2">
+        <Input
+          inputMode="numeric"
+          value={draft.defaultSets}
+          placeholder="组"
+          onChange={(event) => onChange({ ...draft, defaultSets: Number(event.target.value) || 0 })}
+        />
+        <Input
+          inputMode="numeric"
+          value={draft.defaultReps}
+          placeholder="次"
+          onChange={(event) => onChange({ ...draft, defaultReps: Number(event.target.value) || 0 })}
+        />
+        <Input
+          inputMode="decimal"
+          value={draft.defaultWeight}
+          placeholder="kg"
+          onChange={(event) => onChange({ ...draft, defaultWeight: Number(event.target.value) || 0 })}
+        />
+      </div>
+    </>
+  )
+}
+
+function fromPlanExercise(exercise: PlanExercise): ExerciseDraft {
+  return {
+    id: exercise.id,
+    libraryExerciseId: exercise.libraryExerciseId,
+    name: exercise.name,
+    muscleGroup: exercise.muscle,
+    defaultSets: exercise.sets,
+    defaultReps: exercise.reps,
+    defaultWeight: exercise.weight,
+  }
+}
+
+function fromLibraryExercise(exercise: LibraryExercise): ExerciseDraft {
+  return {
+    id: crypto.randomUUID(),
+    libraryExerciseId: exercise.id,
+    name: exercise.name,
+    muscleGroup: exercise.muscleGroup,
+    defaultSets: exercise.defaultSets,
+    defaultReps: exercise.defaultReps,
+    defaultWeight: exercise.defaultWeight,
+  }
 }

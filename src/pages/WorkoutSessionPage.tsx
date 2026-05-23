@@ -1,48 +1,114 @@
 import { Check, ChevronRight, Minus, Plus } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { todayPlan } from "@/data/mock"
+import { EmptyState, LoadingState } from "@/components/ui/state"
+import { useAppData } from "@/lib/app-data"
 
 type CompletedSet = {
   id: string
+  exerciseId: string
+  exerciseName: string
   weight: number
   reps: number
 }
 
-export function WorkoutSessionPage() {
-  const [exerciseIndex, setExerciseIndex] = useState(0)
-  const [weight, setWeight] = useState(todayPlan.exercises[0].weight)
-  const [reps, setReps] = useState(todayPlan.exercises[0].reps)
-  const [sets, setSets] = useState<CompletedSet[]>([])
+export const workoutSummaryStorageKey = "fitnote.workoutSummary"
 
-  const exercise = todayPlan.exercises[exerciseIndex]
-  const completedForExercise = sets.filter((set) => set.id.startsWith(exercise.id))
+export function WorkoutSessionPage() {
+  const navigate = useNavigate()
+  const { data, loading, saveWorkoutSession } = useAppData()
+  const todayPlan = data?.todayPlan
+  const [exerciseIndex, setExerciseIndex] = useState(0)
+  const firstExercise = todayPlan?.exercises[0]
+  const [weight, setWeight] = useState(firstExercise?.weight ?? 0)
+  const [reps, setReps] = useState(firstExercise?.reps ?? 0)
+  const [sets, setSets] = useState<CompletedSet[]>([])
+  const [startedAt] = useState(Date.now())
+
+  useEffect(() => {
+    if (firstExercise) {
+      setWeight(firstExercise.weight)
+      setReps(firstExercise.reps)
+    }
+  }, [firstExercise])
+
+  if (loading || !data) {
+    return <LoadingState title="训练" />
+  }
+
+  if (!todayPlan || todayPlan.exercises.length === 0) {
+    return (
+      <div className="space-y-5">
+        <EmptyState icon={Check} title="未设置" />
+        <Button asChild className="w-full rounded-3xl">
+          <Link to="/workout/plan">计划</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  const activePlan = todayPlan
+  const exercise = activePlan.exercises[Math.min(exerciseIndex, activePlan.exercises.length - 1)]
+  const completedForExercise = sets.filter((set) => set.exerciseId === exercise.id)
 
   function completeSet() {
     setSets((current) => [
       ...current,
-      { id: `${exercise.id}-${current.length + 1}`, weight, reps },
+      { id: crypto.randomUUID(), exerciseId: exercise.id, exerciseName: exercise.name, weight, reps },
     ])
   }
 
   function goNextExercise() {
-    const nextIndex = Math.min(exerciseIndex + 1, todayPlan.exercises.length - 1)
-    const nextExercise = todayPlan.exercises[nextIndex]
+    const nextIndex = Math.min(exerciseIndex + 1, activePlan.exercises.length - 1)
+    const nextExercise = activePlan.exercises[nextIndex]
     setExerciseIndex(nextIndex)
     setWeight(nextExercise.weight)
     setReps(nextExercise.reps)
+  }
+
+  async function finishWorkout() {
+    const finishedAt = Date.now()
+    await saveWorkoutSession({
+      planId: activePlan.id,
+      startedAt,
+      finishedAt,
+      sets: sets.map((set, index) => ({
+        exerciseId: set.exerciseId,
+        setIndex: index + 1,
+        actualReps: set.reps,
+        actualWeight: set.weight,
+      })),
+    })
+
+    const volume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
+    sessionStorage.setItem(
+      workoutSummaryStorageKey,
+      JSON.stringify({
+        title: activePlan.title,
+        durationMinutes: Math.max(1, Math.round((finishedAt - startedAt) / 60000)),
+        sets: sets.length,
+        volume,
+        exercises: activePlan.exercises.map((item) => ({
+          id: item.id,
+          name: item.name,
+          muscle: item.muscle,
+          sets: sets.filter((set) => set.exerciseId === item.id).length,
+        })),
+      }),
+    )
+    navigate("/workout/summary")
   }
 
   return (
     <div className="space-y-5">
       <div>
         <p className="text-sm text-muted-foreground">
-          {exerciseIndex + 1} / {todayPlan.exercises.length}
+          {exerciseIndex + 1} / {activePlan.exercises.length}
         </p>
         <h2 className="text-3xl font-semibold">{exercise.name}</h2>
       </div>
@@ -119,13 +185,13 @@ export function WorkoutSessionPage() {
           variant="secondary"
           className="w-full"
           onClick={goNextExercise}
-          disabled={exerciseIndex === todayPlan.exercises.length - 1}
+          disabled={exerciseIndex === activePlan.exercises.length - 1}
         >
           <ChevronRight className="h-4 w-4" />
           下一个
         </Button>
-        <Button asChild variant="quiet" className="w-full">
-          <Link to="/workout/summary">结束</Link>
+        <Button variant="quiet" className="w-full" onClick={finishWorkout}>
+          结束
         </Button>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import { useAppData } from "@/lib/app-data"
 import { mealDraftStorageKey, type MealDraft, type MealDraftItem } from "@/pages/FoodPage"
 
 type MealItem = MealDraftItem & {
@@ -18,6 +19,7 @@ const fallbackMealItems: MealItem[] = [{ id: "manual", name: "食物", calories:
 export function MealConfirmPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { saveMeal } = useAppData()
   const [mealItems, setMealItems] = useState<MealItem[]>(() => loadMealItems())
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 })
@@ -52,7 +54,15 @@ export function MealConfirmPage() {
     showToast({ title: "已添加" })
   }
 
-  function saveMeal() {
+  async function saveCurrentMeal() {
+    await saveMeal({
+      rawText: "AI JSON",
+      calories: total.calories,
+      protein: total.protein,
+      carbs: total.carbs,
+      fat: total.fat,
+      items: mealItems.map(({ id: _id, ...item }) => item),
+    })
     sessionStorage.removeItem(mealDraftStorageKey)
     showToast({ title: "已保存" })
     navigate("/food")
@@ -152,7 +162,7 @@ export function MealConfirmPage() {
         ))}
       </section>
 
-      <Button className="w-full rounded-3xl" size="lg" onClick={saveMeal}>
+      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentMeal}>
         <Check className="h-5 w-5" />
         保存
       </Button>

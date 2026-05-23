@@ -4,9 +4,36 @@ import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { todayPlan } from "@/data/mock"
+import { EmptyState, LoadingState } from "@/components/ui/state"
+import { useAppData, weekdayText } from "@/lib/app-data"
 
 export function TodayWorkoutPage() {
+  const { data, loading } = useAppData()
+
+  if (loading || !data) {
+    return <LoadingState title="训练" />
+  }
+
+  const todayPlan = data.todayPlan
+
+  if (!todayPlan) {
+    return (
+      <div className="space-y-5">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-3xl">今日训练</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <EmptyState icon={Dumbbell} title="未设置" />
+            <Button asChild size="lg" className="w-full rounded-3xl">
+              <Link to="/workout/plan">计划</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       <Card>
@@ -14,7 +41,7 @@ export function TodayWorkoutPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <CardTitle className="text-3xl">{todayPlan.title}</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">{todayPlan.weekday}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{weekdayText(todayPlan.weekday)}</p>
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-accent/72 text-accent-foreground">
               <CalendarDays className="h-7 w-7" />
@@ -25,7 +52,7 @@ export function TodayWorkoutPage() {
           <div className="flex gap-2">
             <Badge>
               <Clock3 className="mr-1 h-3.5 w-3.5" />
-              {todayPlan.duration}
+              {todayPlan.exercises.length}
             </Badge>
             <Badge>
               <Dumbbell className="mr-1 h-3.5 w-3.5" />

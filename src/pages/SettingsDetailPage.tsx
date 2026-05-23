@@ -1,12 +1,13 @@
 import { Bell, Check, Database, Download, Moon, Shield, Sun, Target, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ErrorState, LoadingState } from "@/components/ui/state"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
+import { useAppData } from "@/lib/app-data"
 import { useTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +22,7 @@ const titles: Record<string, string> = {
 export function SettingsDetailPage() {
   const section = useParams().section ?? "goals"
   const { showToast } = useToast()
+  const { data, saveProfile } = useAppData()
   const title = titles[section] ?? "设置"
 
   return (
@@ -29,19 +31,20 @@ export function SettingsDetailPage() {
         <CardHeader>
           <CardTitle className="text-3xl">{title}</CardTitle>
         </CardHeader>
-        <CardContent>{renderSection(section, showToast)}</CardContent>
+        <CardContent>{renderSection(section, showToast, data, saveProfile)}</CardContent>
       </Card>
-
-      <Button asChild variant="quiet" className="w-full">
-        <Link to="/profile">返回</Link>
-      </Button>
     </div>
   )
 }
 
-function renderSection(section: string, showToast: (toast: { title: string; description?: string }) => void) {
+function renderSection(
+  section: string,
+  showToast: (toast: { title: string; description?: string }) => void,
+  data: ReturnType<typeof useAppData>["data"],
+  saveProfile: ReturnType<typeof useAppData>["saveProfile"],
+) {
   if (section === "goals") {
-    return <GoalSettings onSave={() => showToast({ title: "目标已保存" })} />
+    return <GoalSettings data={data} onSave={saveProfile} onSaved={() => showToast({ title: "目标已保存" })} />
   }
 
   if (section === "reminders") {
@@ -212,8 +215,40 @@ function ThemePreview({
   )
 }
 
-function GoalSettings({ onSave }: { onSave: () => void }) {
-  const [goals, setGoals] = useState({ calories: "2200", protein: "150", carbs: "240", fat: "70" })
+function GoalSettings({
+  data,
+  onSave,
+  onSaved,
+}: {
+  data: ReturnType<typeof useAppData>["data"]
+  onSave: ReturnType<typeof useAppData>["saveProfile"]
+  onSaved: () => void
+}) {
+  const [goals, setGoals] = useState({
+    calories: String(data?.profile.goals.calories ?? 2200),
+    protein: String(data?.profile.goals.protein ?? 150),
+    carbs: String(data?.profile.goals.carbs ?? 240),
+    fat: String(data?.profile.goals.fat ?? 70),
+  })
+
+  async function saveGoals() {
+    if (!data) {
+      return
+    }
+
+    await onSave({
+      name: data.profile.name,
+      heightCm: data.profile.heightCm,
+      weightKg: data.profile.weightKg,
+      goals: {
+        calories: Number(goals.calories) || 2200,
+        protein: Number(goals.protein) || 150,
+        carbs: Number(goals.carbs) || 240,
+        fat: Number(goals.fat) || 70,
+      },
+    })
+    onSaved()
+  }
 
   return (
     <div className="space-y-3">
@@ -239,7 +274,7 @@ function GoalSettings({ onSave }: { onSave: () => void }) {
           onChange={(event) => setGoals((current) => ({ ...current, fat: event.target.value }))}
         />
       </div>
-      <Button className="w-full rounded-3xl" onClick={onSave}>
+      <Button className="w-full rounded-3xl" onClick={saveGoals}>
         <Target className="h-4 w-4" />
         保存
       </Button>

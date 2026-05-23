@@ -3,6 +3,30 @@ import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core"
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  heightCm: real("height_cm"),
+  weightKg: real("weight_kg"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+})
+
+export const nutritionGoals = sqliteTable("nutrition_goals", {
+  userId: text("user_id").primaryKey().references(() => users.id),
+  calories: real("calories").notNull(),
+  protein: real("protein").notNull(),
+  carbs: real("carbs").notNull(),
+  fat: real("fat").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+})
+
+export const exerciseLibrary = sqliteTable("exercise_library", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  muscleGroup: text("muscle_group").notNull(),
+  defaultSets: integer("default_sets").notNull(),
+  defaultReps: integer("default_reps").notNull(),
+  defaultWeight: real("default_weight").notNull(),
+  isBuiltin: integer("is_builtin", { mode: "boolean" }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 })
 
@@ -17,6 +41,7 @@ export const workoutPlans = sqliteTable("workout_plans", {
 export const workoutExercises = sqliteTable("workout_exercises", {
   id: text("id").primaryKey(),
   planId: text("plan_id").notNull().references(() => workoutPlans.id),
+  libraryExerciseId: text("library_exercise_id").references(() => exerciseLibrary.id),
   name: text("name").notNull(),
   muscleGroup: text("muscle_group").notNull(),
   targetSets: integer("target_sets").notNull(),

@@ -1,7 +1,9 @@
-import { Navigate, Route, Routes } from "react-router-dom"
+import { Navigate, Route, Routes, useLocation } from "react-router-dom"
+import type { ReactNode } from "react"
 
 import { AppShell } from "@/components/layout/AppShell"
 import { ToastProvider } from "@/components/ui/toast"
+import { AppDataProvider, useAppData } from "@/lib/app-data"
 import { ThemeProvider } from "@/lib/theme"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { FoodPage } from "@/pages/FoodPage"
@@ -23,27 +25,42 @@ export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AppShell>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/workout" element={<TodayWorkoutPage />} />
-            <Route path="/workout/session" element={<WorkoutSessionPage />} />
-            <Route path="/workout/summary" element={<WorkoutSummaryPage />} />
-            <Route path="/workout/plan" element={<WorkoutPlanPage />} />
-            <Route path="/workout/history" element={<WorkoutHistoryPage />} />
-            <Route path="/workout/library" element={<ExerciseLibraryPage />} />
-            <Route path="/food" element={<FoodPage />} />
-            <Route path="/food/confirm" element={<MealConfirmPage />} />
-            <Route path="/food/image" element={<FoodImagePage />} />
-            <Route path="/stats" element={<StatsPage />} />
-            <Route path="/stats/:type" element={<StatsDetailPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/settings/:section" element={<SettingsDetailPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AppShell>
+        <AppDataProvider>
+          <AppShell>
+            <SetupGate>
+              <Routes>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/workout" element={<TodayWorkoutPage />} />
+                <Route path="/workout/session" element={<WorkoutSessionPage />} />
+                <Route path="/workout/summary" element={<WorkoutSummaryPage />} />
+                <Route path="/workout/plan" element={<WorkoutPlanPage />} />
+                <Route path="/workout/history" element={<WorkoutHistoryPage />} />
+                <Route path="/workout/library" element={<ExerciseLibraryPage />} />
+                <Route path="/food" element={<FoodPage />} />
+                <Route path="/food/confirm" element={<MealConfirmPage />} />
+                <Route path="/food/image" element={<FoodImagePage />} />
+                <Route path="/stats" element={<StatsPage />} />
+                <Route path="/stats/:type" element={<StatsDetailPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/profile/settings/:section" element={<SettingsDetailPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </SetupGate>
+          </AppShell>
+        </AppDataProvider>
       </ToastProvider>
     </ThemeProvider>
   )
+}
+
+function SetupGate({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  const { isProfileReady, loading } = useAppData()
+
+  if (!loading && !isProfileReady && location.pathname !== "/onboarding") {
+    return <Navigate to="/onboarding" replace />
+  }
+
+  return children
 }

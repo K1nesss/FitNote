@@ -22,6 +22,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to),
   )
 
+  function goBack() {
+    const historyState = window.history.state as { idx?: number } | null
+
+    if (historyState?.idx && historyState.idx > 0) {
+      navigate(-1)
+      return
+    }
+
+    navigate(getFallbackBackPath(location.pathname), { replace: true })
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
@@ -33,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 className="liquid-control flex h-11 w-11 items-center justify-center rounded-full transition active:scale-95"
-                onClick={() => navigate(-1)}
+                onClick={goBack}
                 aria-label="返回"
               >
                 <ChevronLeft className="relative z-10 h-5 w-5" />
@@ -92,4 +103,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </div>
   )
+}
+
+function getFallbackBackPath(pathname: string) {
+  if (pathname.startsWith("/profile/settings")) return "/profile"
+  if (pathname.startsWith("/stats/")) return "/stats"
+  if (pathname.startsWith("/workout/session")) return "/workout"
+  if (pathname.startsWith("/workout/summary")) return "/workout/history"
+  if (pathname.startsWith("/workout/plan") || pathname.startsWith("/workout/history") || pathname.startsWith("/workout/library")) return "/workout"
+  if (pathname.startsWith("/food/confirm") || pathname.startsWith("/food/image")) return "/food"
+
+  return "/"
 }
