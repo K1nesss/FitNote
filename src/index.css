@@ -263,21 +263,25 @@ a[aria-current="page"] > svg {
 .liquid-bar-track {
   position: relative;
   overflow: hidden;
+  width: clamp(2rem, 8vw, 2.55rem);
+  max-width: 100%;
+  border-radius: 999px;
   border: 1px solid var(--surface-border);
-  background: color-mix(in oklch, var(--color-primary) 7%, var(--surface-pill));
+  background: color-mix(in oklch, var(--color-primary) 6%, var(--surface-pill));
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, var(--surface-edge) 74%, transparent),
-    inset 0 -10px 20px color-mix(in oklch, var(--color-primary) 6%, transparent),
+    inset 0 -14px 22px color-mix(in oklch, var(--color-primary) 7%, transparent),
+    inset 8px 0 16px rgba(255, 255, 255, 0.1),
     0 8px 18px color-mix(in oklch, var(--surface-soft-shadow) 70%, transparent);
   backdrop-filter: blur(18px) saturate(1.18);
   -webkit-backdrop-filter: blur(18px) saturate(1.18);
-  --liquid-color: color-mix(in oklch, var(--color-primary) 72%, var(--color-card));
-  --liquid-surface: color-mix(in oklch, var(--color-primary) 42%, var(--color-card));
+  --liquid-color: color-mix(in oklch, var(--color-primary) 70%, var(--color-card));
+  --liquid-surface: color-mix(in oklch, var(--color-primary) 58%, var(--color-card));
 }
 
 .liquid-bar-track.is-over {
   --liquid-color: color-mix(in oklch, var(--color-primary) 86%, var(--color-foreground));
-  --liquid-surface: color-mix(in oklch, var(--color-primary) 68%, var(--color-card));
+  --liquid-surface: color-mix(in oklch, var(--color-primary) 78%, var(--color-foreground));
 }
 
 .liquid-bar-track::after {
@@ -295,26 +299,33 @@ a[aria-current="page"] > svg {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: inherit;
 }
 
 .liquid-bar-body {
   fill: var(--liquid-color);
+  animation: liquid-body-breathe 2.8s ease-in-out infinite;
+}
+
+.liquid-bar-surface-group {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .liquid-bar-surface {
   fill: var(--liquid-surface);
-  opacity: 0.9;
+  opacity: 0.92;
   transform-box: fill-box;
   transform-origin: center;
 }
 
 .liquid-bar-surface-a {
-  animation: liquid-wave-a 5.2s ease-in-out infinite alternate;
+  animation: liquid-wave-a 2.25s linear infinite;
 }
 
 .liquid-bar-surface-b {
-  opacity: 0.44;
-  animation: liquid-wave-b 6.4s ease-in-out infinite alternate;
+  opacity: 0.52;
+  animation: liquid-wave-b 2.9s linear infinite;
 }
 
 .liquid-bar-highlight {
@@ -322,7 +333,7 @@ a[aria-current="page"] > svg {
   stroke: rgba(255, 255, 255, 0.34);
   stroke-width: 2;
   stroke-linecap: round;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .surface-input {
@@ -415,19 +426,35 @@ a[aria-current="page"] > svg {
 
 @keyframes liquid-wave-a {
   0% {
-    translate: -11px 0;
+    transform: translateX(-42px) translateY(0);
+  }
+  50% {
+    transform: translateX(-21px) translateY(1.5px);
   }
   100% {
-    translate: 7px 1px;
+    transform: translateX(0) translateY(0);
   }
 }
 
 @keyframes liquid-wave-b {
   0% {
-    translate: 9px 1px;
+    transform: translateX(0) translateY(1px);
+  }
+  50% {
+    transform: translateX(-21px) translateY(-1px);
   }
   100% {
-    translate: -8px 0;
+    transform: translateX(-42px) translateY(1px);
+  }
+}
+
+@keyframes liquid-body-breathe {
+  0%,
+  100% {
+    opacity: 0.94;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
