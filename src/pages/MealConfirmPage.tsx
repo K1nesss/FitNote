@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useAppData } from "@/lib/app-data"
+import { isDateKey, todayKey } from "@/lib/date"
 import { mealDraftStorageKey, mealTypeOptions, type MealDraft, type MealDraftItem } from "@/pages/FoodPage"
 
 type MealItem = MealDraftItem & {
@@ -44,7 +45,9 @@ export function MealConfirmPage() {
     },
     [mealItems],
   )
-  const mealType = readMealDraft()?.mealType ?? "lunch"
+  const mealDraft = readMealDraft()
+  const mealType = mealDraft?.mealType ?? "lunch"
+  const selectedDate = mealDraft?.date ?? todayKey()
 
   function updateItem(id: string, key: keyof Omit<MealItem, "id" | "name">, value: number) {
     setMealItems((current) =>
@@ -65,6 +68,7 @@ export function MealConfirmPage() {
 
   async function saveCurrentMeal() {
     await saveMeal({
+      date: selectedDate,
       rawText: "AI JSON",
       mealType,
       calories: total.calories,
@@ -75,7 +79,7 @@ export function MealConfirmPage() {
     })
     sessionStorage.removeItem(mealDraftStorageKey)
     showToast({ title: "已保存" })
-    navigate("/food")
+    navigate(`/food?date=${selectedDate}`)
   }
 
   return (
@@ -257,7 +261,10 @@ function readMealDraft(): MealDraft | null {
       return null
     }
 
-    return parsed
+    return {
+      ...parsed,
+      date: isDateKey(parsed.date) ? parsed.date : todayKey(),
+    }
   } catch {
     return null
   }

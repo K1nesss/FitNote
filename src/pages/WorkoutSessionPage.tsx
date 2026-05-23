@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { LoadingState } from "@/components/ui/state"
 import { useAppData } from "@/lib/app-data"
+import { timestampOnDate, weekdayNumber } from "@/lib/date"
+import { useSelectedDateParam } from "@/lib/use-selected-date"
 
 type CompletedSet = {
   id: string
@@ -22,13 +24,15 @@ export const workoutSummaryStorageKey = "fitnote.workoutSummary"
 export function WorkoutSessionPage() {
   const navigate = useNavigate()
   const { data, loading, saveWorkoutSession } = useAppData()
-  const todayPlan = data?.todayPlan
+  const { selectedDate } = useSelectedDateParam()
+  const selectedWeekday = weekdayNumber(selectedDate)
+  const todayPlan = data?.plans.find((plan) => plan.weekday === selectedWeekday) ?? null
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const firstExercise = todayPlan?.exercises[0]
   const [weight, setWeight] = useState(firstExercise?.weight ?? 0)
   const [reps, setReps] = useState(firstExercise?.reps ?? 0)
   const [sets, setSets] = useState<CompletedSet[]>([])
-  const [startedAt] = useState(Date.now())
+  const [startedAt] = useState(() => timestampOnDate(selectedDate))
 
   useEffect(() => {
     if (firstExercise) {
@@ -88,9 +92,10 @@ export function WorkoutSessionPage() {
   async function finishWorkout() {
     const finishedAt = Date.now()
     await saveWorkoutSession({
+      date: selectedDate,
       planId: activePlan.id,
       startedAt,
-      finishedAt,
+      finishedAt: timestampOnDate(selectedDate, finishedAt),
       sets: sets.map((set, index) => ({
         exerciseId: set.exerciseId,
         setIndex: index + 1,
@@ -115,7 +120,7 @@ export function WorkoutSessionPage() {
         })),
       }),
     )
-    navigate("/workout/summary")
+    navigate(`/workout/summary?date=${selectedDate}`)
   }
 
   return (

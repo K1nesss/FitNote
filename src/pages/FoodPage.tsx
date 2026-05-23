@@ -2,12 +2,14 @@ import { Camera, Check, Clipboard, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
+import { DateStrip } from "@/components/ui/date-strip"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toast"
-import { useAppData } from "@/lib/app-data"
 import type { MealType } from "@/lib/api"
+import { useDayData } from "@/lib/use-day-data"
+import { useSelectedDateParam } from "@/lib/use-selected-date"
 import { cn } from "@/lib/utils"
 
 export type MealDraftItem = {
@@ -19,6 +21,7 @@ export type MealDraftItem = {
 }
 
 export type MealDraft = {
+  date: string
   mealType: MealType
   calories: number
   protein: number
@@ -62,7 +65,8 @@ JSON 格式：
 export function FoodPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { data } = useAppData()
+  const { selectedDate, setSelectedDate } = useSelectedDateParam()
+  const { dayData } = useDayData(selectedDate)
   const [jsonText, setJsonText] = useState("")
   const [mealType, setMealType] = useState<MealType>("lunch")
   const parsedMeal = useMemo(() => parseMealJson(jsonText), [jsonText])
@@ -78,12 +82,14 @@ export function FoodPage() {
       return
     }
 
-    sessionStorage.setItem(mealDraftStorageKey, JSON.stringify({ ...parsedMeal, mealType }))
-    navigate("/food/confirm")
+    sessionStorage.setItem(mealDraftStorageKey, JSON.stringify({ ...parsedMeal, date: selectedDate, mealType }))
+    navigate(`/food/confirm?date=${selectedDate}`)
   }
 
   return (
     <div className="space-y-5">
+      <DateStrip value={selectedDate} onChange={setSelectedDate} />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-3xl">饮食</CardTitle>
@@ -167,8 +173,8 @@ export function FoodPage() {
       </Card>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">今日记录</h2>
-        {(data?.recentMeals ?? []).map((meal) => (
+        <h2 className="text-lg font-semibold">记录</h2>
+        {(dayData?.meals ?? []).map((meal) => (
           <Card key={meal.id}>
             <CardContent className="flex items-center justify-between gap-4 p-4">
               <div>
@@ -182,6 +188,9 @@ export function FoodPage() {
             </CardContent>
           </Card>
         ))}
+        {dayData?.meals.length === 0 ? (
+          <div className="rounded-[28px] bg-muted/35 p-5 text-sm font-medium text-muted-foreground">暂无</div>
+        ) : null}
       </section>
     </div>
   )
@@ -225,7 +234,7 @@ export function parseMealJson(value: string): MealDraft | null {
       return null
     }
 
-    return { mealType: "lunch", calories, protein, carbs, fat, items }
+    return { date: "", mealType: "lunch", calories, protein, carbs, fat, items }
   } catch {
     return null
   }

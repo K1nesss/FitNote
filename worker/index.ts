@@ -114,6 +114,12 @@ export default {
         return json(await getBootstrap(db))
       }
 
+      if (url.pathname === "/api/day" && request.method === "GET") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        return json(await getDayData(db, url.searchParams.get("date")))
+      }
+
       if (url.pathname === "/api/profile" && request.method === "PUT") {
         const db = getDB(env)
         await ensureDefaults(db)
@@ -216,12 +222,14 @@ type PlanInput = {
 }
 
 type MealInput = MacroInput & {
+  date?: string
   mealType?: string
   rawText?: string
   items?: Array<MacroInput & { name?: string }>
 }
 
 type WorkoutSessionInput = {
+  date?: string
   planId?: string
   startedAt?: number
   finishedAt?: number
@@ -360,11 +368,7 @@ async function getBootstrap(db: D1Database) {
 
   const plans = await getPlans(db)
   const todayPlan = plans.find((plan) => plan.weekday === weekday) ?? null
-  const todayMeals = await allRows(
-    db,
-    "SELECT id, meal_type as mealType, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC",
-    [defaultUserId, todayStart, tomorrowStart],
-  )
+  const todayMeals = await getMealsForRange(db, todayStart, tomorrowStart)
   const todayMacro = sumMacros(todayMeals)
   const recentMeals = await getRecentMeals(db)
   const workoutHistory = await getWorkoutHistory(db)
@@ -402,6 +406,24 @@ async function getBootstrap(db: D1Database) {
     workoutHistory,
     stats,
     settings,
+  }
+}
+
+async function getDayData(db: D1Database, dateInput: string | null) {
+  const plans = await getPlans(db)
+  const date = normalizeDateKey(dateInput) ?? formatDateKey(Date.now())
+  const dayStart = startOfDateKey(date)
+  const dayEnd = dayStart + 24 * 60 * 60 * 1000
+  const weekday = getChinaWeekday(dayStart)
+  const meals = await getMealsForRange(db, dayStart, dayEnd)
+  const workoutSessions = await getWorkoutHistory(db, dayStart, dayEnd)
+
+  return {
+    date,
+    plan: plans.find((plan) => plan.weekday === weekday) ?? null,
+    macro: sumMacros(meals),
+    meals,
+    workoutSessions,
   }
 }
 
@@ -563,6 +585,7 @@ async function savePlan(db: D1Database, weekday: number, input: PlanInput) {
 
 async function saveMeal(db: D1Database, input: MealInput) {
   const now = Date.now()
+  const createdAt = timestampOnDate(input.date, now)
   const mealId = crypto.randomUUID()
   const items = Array.isArray(input.items) ? input.items : []
   const totals = normalizeMealTotals(input, items)
@@ -580,7 +603,7 @@ async function saveMeal(db: D1Database, input: MealInput) {
       totals.protein,
       totals.carbs,
       totals.fat,
-      now,
+      createdAt,
     )
     .run()
 
@@ -600,10 +623,12 @@ async function saveWorkoutSession(db: D1Database, input: WorkoutSessionInput) {
   const now = Date.now()
   const sessionId = crypto.randomUUID()
   const sets = Array.isArray(input.sets) ? input.sets.filter((set) => set.exerciseId) : []
+  const startedAt = timestampOnDate(input.date, input.startedAt ?? now)
+  const finishedAt = timestampOnDate(input.date, input.finishedAt ?? now)
 
   await db
     .prepare("INSERT INTO workout_sessions (id, user_id, plan_id, started_at, finished_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(sessionId, defaultUserId, input.planId ?? null, input.startedAt ?? now, input.finishedAt ?? now)
+    .bind(sessionId, defaultUserId, input.planId ?? null, startedAt, finishedAt)
     .run()
 
   if (sets.length > 0) {
@@ -620,7 +645,7 @@ async function saveWorkoutSession(db: D1Database, input: WorkoutSessionInput) {
             set.setIndex ?? index + 1,
             Math.max(0, toNumber(set.actualReps, 0)),
             Math.max(0, toNumber(set.actualWeight, 0)),
-            now,
+            timestampOnDate(input.date, now),
           ),
       ),
     )
@@ -705,6 +730,20 @@ async function getRecentMeals(db: D1Database) {
     [defaultUserId],
   )
 
+  return mapMealRows(meals)
+}
+
+async function getMealsForRange(db: D1Database, start: number, end: number) {
+  const meals = await allRows(
+    db,
+    "SELECT id, meal_type as mealType, raw_text as rawText, calories, protein, carbs, fat, created_at as createdAt FROM meals WHERE user_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC",
+    [defaultUserId, start, end],
+  )
+
+  return mapMealRows(meals)
+}
+
+function mapMealRows(meals: Array<Record<string, unknown>>) {
   return meals.map((meal) => ({
     id: String(meal.id),
     mealType: normalizeMealType(meal.mealType),
@@ -718,7 +757,14 @@ async function getRecentMeals(db: D1Database) {
   }))
 }
 
-async function getWorkoutHistory(db: D1Database) {
+async function getWorkoutHistory(db: D1Database, start?: number, end?: number) {
+  const rangeClause = start !== undefined && end !== undefined ? "AND s.started_at >= ? AND s.started_at < ?" : ""
+  const params: Array<string | number | null> = [defaultUserId]
+
+  if (start !== undefined && end !== undefined) {
+    params.push(start, end)
+  }
+
   const rows = await allRows(
     db,
     `SELECT s.id, s.started_at as startedAt, s.finished_at as finishedAt, COALESCE(p.title, '训练') as title,
@@ -727,10 +773,11 @@ async function getWorkoutHistory(db: D1Database) {
      LEFT JOIN workout_plans p ON p.id = s.plan_id
      LEFT JOIN workout_sets ws ON ws.session_id = s.id
      WHERE s.user_id = ?
+     ${rangeClause}
      GROUP BY s.id
      ORDER BY s.started_at DESC
      LIMIT 20`,
-    [defaultUserId],
+    params,
   )
 
   return rows.map((row) => ({
@@ -911,6 +958,43 @@ function normalizeTime(value: unknown, fallback: string) {
   }
 
   return /^\d{2}:\d{2}$/.test(value) ? value : fallback
+}
+
+function normalizeDateKey(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null
+  }
+
+  const [year, month, day] = value.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null
+  }
+
+  return value
+}
+
+function startOfDateKey(value: string) {
+  const [year, month, day] = value.split("-").map(Number)
+  return Date.UTC(year, month - 1, day) - tzOffsetMs
+}
+
+function formatDateKey(timestamp: number) {
+  const date = new Date(timestamp + tzOffsetMs)
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`
+}
+
+function timestampOnDate(dateInput: unknown, fallback: number) {
+  const date = normalizeDateKey(dateInput)
+
+  if (!date) {
+    return fallback
+  }
+
+  const fallbackDayStart = startOfDay(fallback)
+  const elapsed = Math.max(0, Math.min(24 * 60 * 60 * 1000 - 1, fallback - fallbackDayStart))
+  return startOfDateKey(date) + elapsed
 }
 
 function startOfDay(timestamp: number) {

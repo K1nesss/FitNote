@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSelectedDateParam } from "@/lib/use-selected-date"
 import { workoutSummaryStorageKey } from "@/pages/WorkoutSessionPage"
 
 type Summary = {
@@ -24,6 +25,8 @@ const fallbackSummary: Summary = {
 
 export function WorkoutSummaryPage() {
   const summary = readSummary()
+  const { selectedDate } = useSelectedDateParam()
+  const workoutPath = `/workout?date=${selectedDate}`
   const summaryCards: Array<{
     label: string
     value: string | number
@@ -83,7 +86,7 @@ export function WorkoutSummaryPage() {
           <Link to="/workout/history">历史</Link>
         </Button>
         <Button asChild>
-          <Link to="/">完成</Link>
+          <Link to={workoutPath}>完成</Link>
         </Button>
       </div>
     </div>

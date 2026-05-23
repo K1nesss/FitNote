@@ -17,7 +17,7 @@ export function Dialog({ open, title, children, onClose }: DialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-foreground/18 px-3 pb-3 backdrop-blur-sm sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-[80] flex items-end bg-foreground/18 px-3 pb-3 backdrop-blur-sm sm:items-center sm:p-4">
       <button className="absolute inset-0 cursor-default" type="button" aria-label="关闭" onClick={onClose} />
       <Card className="relative mx-auto max-h-[86dvh] w-full max-w-md overflow-auto rounded-t-[2rem] sm:rounded-[2rem]">
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" />

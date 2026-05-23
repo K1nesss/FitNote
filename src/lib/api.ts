@@ -104,6 +104,14 @@ export type BootstrapData = {
   }
 }
 
+export type DayData = {
+  date: string
+  plan: WorkoutPlan | null
+  macro: Macro
+  meals: MealRecord[]
+  workoutSessions: WorkoutHistoryItem[]
+}
+
 export type ProfilePayload = {
   name: string
   heightCm: number | null
@@ -125,12 +133,14 @@ export type PlanPayload = {
 }
 
 export type MealPayload = Macro & {
+  date?: string
   mealType: MealType
   rawText: string
   items: Array<Macro & { name: string }>
 }
 
 export type WorkoutSessionPayload = {
+  date?: string
   planId: string | null
   startedAt: number
   finishedAt: number
@@ -144,6 +154,10 @@ export type WorkoutSessionPayload = {
 
 export async function getBootstrap() {
   return request<BootstrapData>("/api/bootstrap")
+}
+
+export async function getDayData(date: string) {
+  return request<DayData>(`/api/day?date=${encodeURIComponent(date)}`)
 }
 
 export async function saveProfile(payload: ProfilePayload) {

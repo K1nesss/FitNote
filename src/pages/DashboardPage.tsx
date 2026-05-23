@@ -1,4 +1,4 @@
-import { ArrowRight, Dumbbell, Flame, Utensils } from "lucide-react"
+import { Dumbbell, Flame, Utensils } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -84,7 +84,10 @@ export function DashboardPage() {
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <CardTitle>{todayPlan?.title ?? "今日计划"}</CardTitle>
+              <CardTitle>今日计划</CardTitle>
+              {todayPlan?.exercises.length ? (
+                <p className="mt-1 text-sm text-muted-foreground">{todayPlan.title}</p>
+              ) : null}
             </div>
             <div className="rounded-full bg-white/46 px-3 py-1 text-xs font-semibold text-muted-foreground">
               {todayPlan?.exercises.length ?? 0}
@@ -93,19 +96,20 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {todayPlan?.exercises.length ? (
-            todayPlan.exercises.slice(0, 3).map((exercise) => (
-              <div key={exercise.id} className="flex items-center justify-between rounded-3xl bg-white/70 p-4">
-                <div>
-                  <p className="font-medium">{exercise.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {exercise.sets} 组 x {exercise.reps} 次 · {exercise.weight} kg
-                  </p>
-                </div>
-                <div className="rounded-full bg-white/46 px-3 py-1 text-xs font-semibold text-muted-foreground">
-                  {exercise.muscle}
-                </div>
+            <div className="rounded-[28px] bg-muted/35 p-4">
+              <div className="flex flex-wrap gap-2">
+                {todayPlan.exercises.slice(0, 2).map((exercise) => (
+                  <span key={exercise.id} className="rounded-full bg-white/56 px-3 py-1 text-sm font-medium">
+                    {exercise.name}
+                  </span>
+                ))}
+                {todayPlan.exercises.length > 2 ? (
+                  <span className="rounded-full bg-white/46 px-3 py-1 text-sm font-medium text-muted-foreground">
+                    +{todayPlan.exercises.length - 2}
+                  </span>
+                ) : null}
               </div>
-            ))
+            </div>
           ) : (
             <div className="flex min-h-24 items-center rounded-[28px] bg-muted/35 px-4">
               <div className="flex items-center gap-3">
@@ -116,12 +120,6 @@ export function DashboardPage() {
               </div>
             </div>
           )}
-          <Button asChild variant="ghost" className="w-full">
-            <Link to={todayPlan?.exercises.length ? "/workout" : "/workout/plan"} aria-label="查看计划">
-              计划
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
         </CardContent>
       </Card>
     </div>
