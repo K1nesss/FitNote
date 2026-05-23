@@ -1,16 +1,13 @@
 import { spawn } from "node:child_process"
 
-const isWindows = process.platform === "win32"
-const npx = isWindows ? "npx.cmd" : "npx"
-
 const processes = [
-  spawn(npx, ["wrangler", "dev", "--config", "wrangler.test.toml", "--port", "8787", "--ip", "127.0.0.1"], {
+  spawn("npx wrangler dev --config wrangler.test.toml --port 8787 --ip 127.0.0.1", {
     stdio: "inherit",
-    shell: false,
+    shell: true,
   }),
-  spawn(npx, ["vite", "--host", "127.0.0.1", "--port", "5173"], {
+  spawn("npx vite --host 127.0.0.1 --port 5173", {
     stdio: "inherit",
-    shell: false,
+    shell: true,
   }),
 ]
 
