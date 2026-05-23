@@ -20,6 +20,7 @@ export function OnboardingPage() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const { data, saveProfile } = useAppData()
+  const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState({
     name: "Sean",
     height: "",
@@ -47,19 +48,27 @@ export function OnboardingPage() {
   }, [data])
 
   async function finish() {
-    await saveProfile({
-      name: profile.name,
-      heightCm: Number(profile.height) || null,
-      weightKg: Number(profile.weight) || null,
-      goals: {
-        calories: Number(profile.calories) || 2200,
-        protein: Number(profile.protein) || 150,
-        carbs: Number(profile.carbs) || 240,
-        fat: Number(profile.fat) || 70,
-      },
-    })
-    showToast({ title: "已保存" })
-    navigate("/workout/plan", { replace: true })
+    setSaving(true)
+
+    try {
+      await saveProfile({
+        name: profile.name,
+        heightCm: Number(profile.height) || null,
+        weightKg: Number(profile.weight) || null,
+        goals: {
+          calories: Number(profile.calories) || 2200,
+          protein: Number(profile.protein) || 150,
+          carbs: Number(profile.carbs) || 240,
+          fat: Number(profile.fat) || 70,
+        },
+      })
+      showToast({ title: "已保存" })
+      navigate("/workout/plan", { replace: true })
+    } catch {
+      showToast({ title: "保存失败", description: "检查本地 Worker 是否启动。" })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -156,8 +165,8 @@ export function OnboardingPage() {
         </CardContent>
       </Card>
 
-      <Button className="w-full rounded-3xl" size="lg" onClick={finish}>
-        完成
+      <Button className="w-full rounded-3xl" size="lg" onClick={finish} disabled={saving}>
+        {saving ? "保存中" : "完成"}
         <ArrowRight className="h-5 w-5" />
       </Button>
     </div>
