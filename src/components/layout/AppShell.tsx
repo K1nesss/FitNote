@@ -67,22 +67,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="relative h-[4.5rem]">
               <LiquidGlass
                 className="fitnote-liquid-nav"
-                displacementScale={56}
-                blurAmount={0.08}
-                saturation={150}
-                aberrationIntensity={1.6}
-                elasticity={0.22}
+                displacementScale={78}
+                blurAmount={0.035}
+                saturation={180}
+                aberrationIntensity={2.2}
+                elasticity={0.28}
                 cornerRadius={34}
                 padding="0"
                 mouseContainer={navRef}
-                mode="standard"
+                mode="prominent"
                 style={{ position: "absolute", top: "50%", left: "50%", width: "100%" }}
               >
                 <div className="relative grid h-[4.5rem] w-full grid-cols-4 items-center rounded-[2.15rem] p-2">
                   {activeIndex >= 0 ? (
                     <div className="pointer-events-none absolute inset-2 z-0 grid grid-cols-4" aria-hidden="true">
                       <div
-                        className="liquid-control col-start-1 h-14 rounded-[1.65rem] transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                        className="nav-active-glass col-start-1 h-14 rounded-[1.65rem] transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
                         style={{ transform: `translateX(${activeIndex * 100}%)` }}
                       />
                     </div>
