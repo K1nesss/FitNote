@@ -15,6 +15,8 @@ export function DateStrip({ value, onChange }: DateStripProps) {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [visibleMonth, setVisibleMonth] = useState(value)
   const dates = useMemo(() => recentDateKeys(), [])
+  const selectedDate = dateFromKey(value)
+  const calendarActive = !dates.includes(value)
   const calendarDays = monthGrid(visibleMonth)
   const monthDate = dateFromKey(visibleMonth)
 
@@ -46,19 +48,23 @@ export function DateStrip({ value, onChange }: DateStripProps) {
         <Button
           type="button"
           size="icon"
-          variant="quiet"
-          className="w-full bg-muted/45"
+          variant={calendarActive ? "default" : "quiet"}
+          className={cn("w-full", calendarActive ? "text-primary-foreground" : "bg-muted/45")}
           aria-label="日历"
           onClick={() => {
             setVisibleMonth(value)
             setCalendarOpen(true)
           }}
         >
-          <CalendarDays className="h-5 w-5" />
+          {calendarActive ? (
+            <span className="text-sm font-semibold">{selectedDate.getDate()}</span>
+          ) : (
+            <CalendarDays className="h-5 w-5" />
+          )}
         </Button>
       </div>
 
-      <Dialog open={calendarOpen} title="日期" onClose={() => setCalendarOpen(false)}>
+      <Dialog open={calendarOpen} title="日期" placement="center" onClose={() => setCalendarOpen(false)}>
         <div className="flex items-center justify-between">
           <Button type="button" size="icon" variant="ghost" aria-label="上一月" onClick={() => shiftMonth(-1)}>
             <ChevronLeft className="h-4 w-4" />

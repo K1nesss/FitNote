@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -9,18 +10,31 @@ type DialogProps = {
   title: string
   children: ReactNode
   onClose: () => void
+  placement?: "sheet" | "center"
 }
 
-export function Dialog({ open, title, children, onClose }: DialogProps) {
+export function Dialog({ open, title, children, onClose, placement = "sheet" }: DialogProps) {
   if (!open) {
     return null
   }
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-end bg-foreground/18 px-3 pb-3 backdrop-blur-sm sm:items-center sm:p-4">
+  return createPortal(
+    <div
+      className={
+        placement === "center"
+          ? "fixed inset-0 z-[100] grid place-items-center bg-foreground/18 p-4 backdrop-blur-sm"
+          : "fixed inset-0 z-[100] flex items-end bg-foreground/18 px-3 pb-3 backdrop-blur-sm sm:items-center sm:p-4"
+      }
+    >
       <button className="absolute inset-0 cursor-default" type="button" aria-label="关闭" onClick={onClose} />
-      <Card className="relative mx-auto max-h-[86dvh] w-full max-w-md overflow-auto rounded-t-[2rem] sm:rounded-[2rem]">
-        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" />
+      <Card
+        className={
+          placement === "center"
+            ? "relative mx-auto max-h-[82dvh] w-full max-w-md overflow-auto rounded-[2rem]"
+            : "relative mx-auto max-h-[86dvh] w-full max-w-md overflow-auto rounded-t-[2rem] sm:rounded-[2rem]"
+        }
+      >
+        {placement === "sheet" ? <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" /> : null}
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{title}</CardTitle>
@@ -31,6 +45,7 @@ export function Dialog({ open, title, children, onClose }: DialogProps) {
         </CardHeader>
         <CardContent className="space-y-4">{children}</CardContent>
       </Card>
-    </div>
+    </div>,
+    document.body,
   )
 }
