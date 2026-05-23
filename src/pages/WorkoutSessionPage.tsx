@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { EmptyState, LoadingState } from "@/components/ui/state"
+import { LoadingState } from "@/components/ui/state"
 import { useAppData } from "@/lib/app-data"
 
 type CompletedSet = {
@@ -44,10 +44,24 @@ export function WorkoutSessionPage() {
   if (!todayPlan || todayPlan.exercises.length === 0) {
     return (
       <div className="space-y-5">
-        <EmptyState icon={Check} title="未设置" />
-        <Button asChild className="w-full rounded-3xl">
-          <Link to="/workout/plan">计划</Link>
-        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-3xl">训练</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex min-h-24 items-center rounded-[28px] bg-muted/35 px-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-white/46 text-muted-foreground">
+                  <Check className="h-6 w-6" />
+                </div>
+                <p className="font-medium text-muted-foreground">未设置</p>
+              </div>
+            </div>
+            <Button asChild className="w-full rounded-3xl">
+              <Link to="/workout/plan">计划</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }

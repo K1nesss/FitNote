@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState, LoadingState } from "@/components/ui/state"
+import { LoadingState } from "@/components/ui/state"
 import { useAppData } from "@/lib/app-data"
 
 export function DashboardPage() {
@@ -107,7 +107,14 @@ export function DashboardPage() {
               </div>
             ))
           ) : (
-            <EmptyState icon={Dumbbell} title="未设置" />
+            <div className="flex min-h-24 items-center rounded-[28px] bg-muted/35 px-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-white/46 text-muted-foreground">
+                  <Dumbbell className="h-6 w-6" />
+                </div>
+                <p className="font-medium text-muted-foreground">未设置</p>
+              </div>
+            </div>
           )}
           <Button asChild variant="ghost" className="w-full">
             <Link to={todayPlan?.exercises.length ? "/workout" : "/workout/plan"} aria-label="查看计划">

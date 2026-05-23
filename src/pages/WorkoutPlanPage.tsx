@@ -34,6 +34,7 @@ export function WorkoutPlanPage() {
   const [editing, setEditing] = useState<ExerciseDraft | null>(null)
   const [selectedExercise, setSelectedExercise] = useState<ExerciseDraft | null>(null)
   const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+  const canSave = exercises.length > 0
 
   const currentPlan = data?.plans.find((plan) => plan.weekday === selectedDay)
   const filteredLibrary = useMemo(() => {
@@ -76,6 +77,11 @@ export function WorkoutPlanPage() {
   }
 
   async function saveCurrentPlan() {
+    if (!canSave) {
+      showToast({ title: "先添加动作" })
+      return
+    }
+
     await savePlan(selectedDay, { title, exercises })
     showToast({ title: "已保存" })
   }
@@ -152,6 +158,16 @@ export function WorkoutPlanPage() {
       </div>
 
       <div className="space-y-3">
+        {exercises.length === 0 ? (
+          <div className="flex min-h-24 items-center rounded-[28px] bg-muted/35 px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-white/46 text-muted-foreground">
+                <BookOpen className="h-6 w-6" />
+              </div>
+              <p className="font-medium text-muted-foreground">未添加</p>
+            </div>
+          </div>
+        ) : null}
         {exercises.map((exercise, index) => (
           <Card key={exercise.id}>
             <CardContent
@@ -172,7 +188,7 @@ export function WorkoutPlanPage() {
         ))}
       </div>
 
-      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentPlan}>
+      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentPlan} disabled={!canSave}>
         <Check className="h-5 w-5" />
         保存
       </Button>

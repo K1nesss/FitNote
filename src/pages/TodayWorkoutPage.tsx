@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState, LoadingState } from "@/components/ui/state"
+import { LoadingState } from "@/components/ui/state"
 import { useAppData, weekdayText } from "@/lib/app-data"
 
 export function TodayWorkoutPage() {
@@ -16,7 +16,7 @@ export function TodayWorkoutPage() {
 
   const todayPlan = data.todayPlan
 
-  if (!todayPlan) {
+  if (!todayPlan || todayPlan.exercises.length === 0) {
     return (
       <div className="space-y-5">
         <Card>
@@ -24,7 +24,14 @@ export function TodayWorkoutPage() {
             <CardTitle className="text-3xl">今日训练</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <EmptyState icon={Dumbbell} title="未设置" />
+            <div className="flex min-h-24 items-center rounded-[28px] bg-muted/35 px-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-white/46 text-muted-foreground">
+                  <Dumbbell className="h-6 w-6" />
+                </div>
+                <p className="font-medium text-muted-foreground">未设置</p>
+              </div>
+            </div>
             <Button asChild size="lg" className="w-full rounded-3xl">
               <Link to="/workout/plan">计划</Link>
             </Button>
