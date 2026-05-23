@@ -264,58 +264,65 @@ a[aria-current="page"] > svg {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--surface-border);
-  background:
-    linear-gradient(180deg, color-mix(in oklch, var(--surface-tint) 82%, transparent), color-mix(in oklch, var(--color-primary) 7%, transparent)),
-    var(--surface-pill);
+  background: color-mix(in oklch, var(--color-primary) 7%, var(--surface-pill));
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, var(--surface-edge) 74%, transparent),
-    inset 0 -12px 24px color-mix(in oklch, var(--color-primary) 8%, transparent);
+    inset 0 -10px 20px color-mix(in oklch, var(--color-primary) 6%, transparent),
+    0 8px 18px color-mix(in oklch, var(--surface-soft-shadow) 70%, transparent);
   backdrop-filter: blur(18px) saturate(1.18);
   -webkit-backdrop-filter: blur(18px) saturate(1.18);
+  --liquid-color: color-mix(in oklch, var(--color-primary) 72%, var(--color-card));
+  --liquid-surface: color-mix(in oklch, var(--color-primary) 42%, var(--color-card));
 }
 
-.liquid-bar-fill {
-  position: relative;
-  min-height: 0;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 32% 16%, rgba(255, 255, 255, 0.72) 0 8%, transparent 9%),
-    linear-gradient(180deg, color-mix(in oklch, var(--color-accent) 76%, white) 0%, var(--color-primary) 58%, color-mix(in oklch, var(--color-primary) 78%, black) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    inset 0 -10px 18px color-mix(in oklch, var(--color-primary) 35%, black),
-    0 8px 18px color-mix(in oklch, var(--color-primary) 26%, transparent);
-  transition: height 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+.liquid-bar-track.is-over {
+  --liquid-color: color-mix(in oklch, var(--color-primary) 86%, var(--color-foreground));
+  --liquid-surface: color-mix(in oklch, var(--color-primary) 68%, var(--color-card));
 }
 
-.liquid-bar-wave,
-.liquid-bar-shine {
+.liquid-bar-track::after {
+  content: "";
   position: absolute;
-  inset-inline: -36%;
+  inset: 0;
   pointer-events: none;
-}
-
-.liquid-bar-wave {
-  top: -12px;
-  height: 26px;
-  border-radius: 48%;
-  background:
-    radial-gradient(ellipse at 18% 65%, rgba(255, 255, 255, 0.58) 0 14%, transparent 15%),
-    radial-gradient(ellipse at 52% 40%, rgba(255, 255, 255, 0.36) 0 17%, transparent 18%),
-    radial-gradient(ellipse at 84% 66%, rgba(255, 255, 255, 0.5) 0 13%, transparent 14%);
-  filter: blur(0.2px);
-  opacity: 0.72;
-  animation: liquid-wave 4.8s ease-in-out infinite alternate;
-}
-
-.liquid-bar-shine {
-  top: 8%;
-  bottom: 12%;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent 16%, rgba(255, 255, 255, 0.34) 42%, transparent 68%);
-  transform: translateX(-24%) rotate(4deg);
-  opacity: 0.62;
-  animation: liquid-shine 5.8s ease-in-out infinite;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--surface-edge) 42%, transparent),
+    inset 8px 0 12px rgba(255, 255, 255, 0.08);
+}
+
+.liquid-bar-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.liquid-bar-body {
+  fill: var(--liquid-color);
+}
+
+.liquid-bar-surface {
+  fill: var(--liquid-surface);
+  opacity: 0.9;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.liquid-bar-surface-a {
+  animation: liquid-wave-a 5.2s ease-in-out infinite alternate;
+}
+
+.liquid-bar-surface-b {
+  opacity: 0.44;
+  animation: liquid-wave-b 6.4s ease-in-out infinite alternate;
+}
+
+.liquid-bar-highlight {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.34);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.55;
 }
 
 .surface-input {
@@ -406,22 +413,21 @@ a[aria-current="page"] > svg {
   }
 }
 
-@keyframes liquid-wave {
+@keyframes liquid-wave-a {
   0% {
-    transform: translateX(-5%) translateY(0) scaleX(1.02);
+    translate: -11px 0;
   }
   100% {
-    transform: translateX(5%) translateY(2px) scaleX(1.08);
+    translate: 7px 1px;
   }
 }
 
-@keyframes liquid-shine {
-  0%,
-  100% {
-    transform: translateX(-28%) rotate(4deg);
+@keyframes liquid-wave-b {
+  0% {
+    translate: 9px 1px;
   }
-  52% {
-    transform: translateX(18%) rotate(4deg);
+  100% {
+    translate: -8px 0;
   }
 }
 
