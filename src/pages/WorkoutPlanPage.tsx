@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, BookOpen, Check, GripVertical, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { PointerEvent } from "react"
+import type { PointerEvent, TouchEvent } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,6 +62,37 @@ export function WorkoutPlanPage() {
     setTitle(currentPlan?.title ?? `${weekdayText(selectedDay)}训练`)
     setExercises((currentPlan?.exercises ?? []).map(fromPlanExercise))
   }, [currentPlan, selectedDay])
+
+  useEffect(() => {
+    function handleTouchMove(event: globalThis.TouchEvent) {
+      const activeId = dragIdRef.current
+
+      if (!activeId) {
+        return
+      }
+
+      event.preventDefault()
+      const touch = event.touches[0]
+
+      if (touch) {
+        reorderFromPoint(activeId, touch.clientX, touch.clientY)
+      }
+    }
+
+    function handleTouchEnd() {
+      endDrag()
+    }
+
+    document.addEventListener("touchmove", handleTouchMove, { passive: false })
+    document.addEventListener("touchend", handleTouchEnd)
+    document.addEventListener("touchcancel", handleTouchEnd)
+
+    return () => {
+      document.removeEventListener("touchmove", handleTouchMove)
+      document.removeEventListener("touchend", handleTouchEnd)
+      document.removeEventListener("touchcancel", handleTouchEnd)
+    }
+  }, [])
 
   if (loading || !data) {
     return <LoadingState title="训练计划" />
@@ -189,7 +220,11 @@ export function WorkoutPlanPage() {
     }
 
     event.preventDefault()
-    const element = document.elementFromPoint(event.clientX, event.clientY)
+    reorderFromPoint(activeId, event.clientX, event.clientY)
+  }
+
+  function reorderFromPoint(activeId: string, clientX: number, clientY: number) {
+    const element = document.elementFromPoint(clientX, clientY)
     const target = element?.closest<HTMLElement>("[data-exercise-id]")
     const targetId = target?.dataset.exerciseId
 
@@ -211,6 +246,37 @@ export function WorkoutPlanPage() {
     window.setTimeout(() => {
       suppressClickRef.current = false
     }, 0)
+  }
+
+  function startTouchDrag(id: string, event: TouchEvent<HTMLElement>) {
+    clearDragTimer()
+    const touch = event.touches[0]
+
+    if (!touch) {
+      return
+    }
+
+    dragStartRef.current = { x: touch.clientX, y: touch.clientY }
+    dragTimerRef.current = window.setTimeout(() => {
+      dragIdRef.current = id
+      suppressClickRef.current = true
+      setDraggingId(id)
+      navigator.vibrate?.(12)
+    }, 260)
+  }
+
+  function moveTouchBeforeDrag(event: TouchEvent<HTMLElement>) {
+    if (dragIdRef.current) {
+      return
+    }
+
+    const start = dragStartRef.current
+    const touch = event.touches[0]
+
+    if (start && touch && Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10) {
+      clearDragTimer()
+      dragStartRef.current = null
+    }
   }
 
   return (
@@ -278,6 +344,10 @@ export function WorkoutPlanPage() {
               onPointerMove={moveDrag}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
+              onTouchStart={(event) => startTouchDrag(exercise.id, event)}
+              onTouchMove={moveTouchBeforeDrag}
+              onTouchEnd={() => endDrag()}
+              onTouchCancel={() => endDrag()}
               onClick={() => {
                 if (suppressClickRef.current) {
                   return
