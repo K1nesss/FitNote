@@ -34,7 +34,6 @@ export function Dialog({ open, title, children, onClose, placement = "sheet" }: 
             : "relative mx-auto max-h-[86dvh] w-full max-w-md overflow-auto rounded-t-[2rem] sm:rounded-[2rem]"
         }
       >
-        {placement === "sheet" ? <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" /> : null}
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{title}</CardTitle>

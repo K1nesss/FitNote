@@ -1,6 +1,5 @@
-import { ArrowDown, ArrowUp, BookOpen, Check, GripVertical, Pencil, Plus, Search, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
-import type { PointerEvent, TouchEvent } from "react"
+import { ArrowDown, ArrowUp, BookOpen, Check, Plus, Search, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,13 +34,7 @@ export function WorkoutPlanPage() {
   const [customOpen, setCustomOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [editing, setEditing] = useState<ExerciseDraft | null>(null)
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseDraft | null>(null)
   const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const dragTimerRef = useRef<number | null>(null)
-  const dragIdRef = useRef<string | null>(null)
-  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
-  const suppressClickRef = useRef(false)
   const saveSubmit = useSubmitLock()
   const createSubmit = useSubmitLock()
   const canSave = exercises.length > 0
@@ -62,37 +55,6 @@ export function WorkoutPlanPage() {
     setTitle(currentPlan?.title ?? `${weekdayText(selectedDay)}训练`)
     setExercises((currentPlan?.exercises ?? []).map(fromPlanExercise))
   }, [currentPlan, selectedDay])
-
-  useEffect(() => {
-    function handleTouchMove(event: globalThis.TouchEvent) {
-      const activeId = dragIdRef.current
-
-      if (!activeId) {
-        return
-      }
-
-      event.preventDefault()
-      const touch = event.touches[0]
-
-      if (touch) {
-        reorderFromPoint(activeId, touch.clientX, touch.clientY)
-      }
-    }
-
-    function handleTouchEnd() {
-      endDrag()
-    }
-
-    document.addEventListener("touchmove", handleTouchMove, { passive: false })
-    document.addEventListener("touchend", handleTouchEnd)
-    document.addEventListener("touchcancel", handleTouchEnd)
-
-    return () => {
-      document.removeEventListener("touchmove", handleTouchMove)
-      document.removeEventListener("touchend", handleTouchEnd)
-      document.removeEventListener("touchcancel", handleTouchEnd)
-    }
-  }, [])
 
   if (loading || !data) {
     return <LoadingState title="训练计划" />
@@ -161,124 +123,6 @@ export function WorkoutPlanPage() {
     })
   }
 
-  function reorderExercise(activeId: string, targetId: string) {
-    if (activeId === targetId) {
-      return
-    }
-
-    setExercises((current) => {
-      const activeIndex = current.findIndex((exercise) => exercise.id === activeId)
-      const targetIndex = current.findIndex((exercise) => exercise.id === targetId)
-
-      if (activeIndex < 0 || targetIndex < 0 || activeIndex === targetIndex) {
-        return current
-      }
-
-      const next = [...current]
-      const [item] = next.splice(activeIndex, 1)
-      next.splice(targetIndex, 0, item)
-      return next
-    })
-  }
-
-  function clearDragTimer() {
-    if (dragTimerRef.current !== null) {
-      window.clearTimeout(dragTimerRef.current)
-      dragTimerRef.current = null
-    }
-  }
-
-  function startDrag(id: string, event: PointerEvent<HTMLElement>) {
-    clearDragTimer()
-    const target = event.currentTarget
-    const pointerId = event.pointerId
-    dragStartRef.current = { x: event.clientX, y: event.clientY }
-
-    dragTimerRef.current = window.setTimeout(() => {
-      dragIdRef.current = id
-      suppressClickRef.current = true
-      setDraggingId(id)
-      if (!target.hasPointerCapture(pointerId)) {
-        target.setPointerCapture(pointerId)
-      }
-      navigator.vibrate?.(12)
-    }, 260)
-  }
-
-  function moveDrag(event: PointerEvent<HTMLElement>) {
-    const activeId = dragIdRef.current
-
-    if (!activeId) {
-      const start = dragStartRef.current
-
-      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) {
-        clearDragTimer()
-        dragStartRef.current = null
-      }
-
-      return
-    }
-
-    event.preventDefault()
-    reorderFromPoint(activeId, event.clientX, event.clientY)
-  }
-
-  function reorderFromPoint(activeId: string, clientX: number, clientY: number) {
-    const element = document.elementFromPoint(clientX, clientY)
-    const target = element?.closest<HTMLElement>("[data-exercise-id]")
-    const targetId = target?.dataset.exerciseId
-
-    if (targetId) {
-      reorderExercise(activeId, targetId)
-    }
-  }
-
-  function endDrag(event?: PointerEvent<HTMLElement>) {
-    clearDragTimer()
-
-    if (dragIdRef.current && event?.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-
-    dragIdRef.current = null
-    dragStartRef.current = null
-    setDraggingId(null)
-    window.setTimeout(() => {
-      suppressClickRef.current = false
-    }, 0)
-  }
-
-  function startTouchDrag(id: string, event: TouchEvent<HTMLElement>) {
-    clearDragTimer()
-    const touch = event.touches[0]
-
-    if (!touch) {
-      return
-    }
-
-    dragStartRef.current = { x: touch.clientX, y: touch.clientY }
-    dragTimerRef.current = window.setTimeout(() => {
-      dragIdRef.current = id
-      suppressClickRef.current = true
-      setDraggingId(id)
-      navigator.vibrate?.(12)
-    }, 260)
-  }
-
-  function moveTouchBeforeDrag(event: TouchEvent<HTMLElement>) {
-    if (dragIdRef.current) {
-      return
-    }
-
-    const start = dragStartRef.current
-    const touch = event.touches[0]
-
-    if (start && touch && Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10) {
-      clearDragTimer()
-      dragStartRef.current = null
-    }
-  }
-
   return (
     <div className="space-y-5">
       <Card>
@@ -332,32 +176,32 @@ export function WorkoutPlanPage() {
           </div>
         ) : null}
         {exercises.map((exercise, index) => (
-          <Card key={exercise.id} data-exercise-id={exercise.id}>
+          <Card key={exercise.id}>
             <CardContent
-              className={cn(
-                "grid min-h-20 grid-cols-[auto_1fr] items-center gap-3 p-4 transition active:scale-[0.99]",
-                draggingId === exercise.id && "scale-[1.015] bg-primary/8",
-              )}
+              className="grid min-h-20 grid-cols-[auto_1fr_auto] items-center gap-3 p-4 transition active:scale-[0.99]"
               role="button"
               tabIndex={0}
-              onPointerDown={(event) => startDrag(exercise.id, event)}
-              onPointerMove={moveDrag}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              onTouchStart={(event) => startTouchDrag(exercise.id, event)}
-              onTouchMove={moveTouchBeforeDrag}
-              onTouchEnd={() => endDrag()}
-              onTouchCancel={() => endDrag()}
-              onClick={() => {
-                if (suppressClickRef.current) {
-                  return
-                }
-
-                setSelectedExercise(exercise)
-              }}
+              onClick={() => setEditing(exercise)}
             >
-              <div className="rounded-2xl p-2 text-muted-foreground" aria-hidden="true">
-                <GripVertical className="h-5 w-5" />
+              <div className="grid gap-1" onClick={(event) => event.stopPropagation()}>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-2xl bg-muted/55 text-muted-foreground transition active:scale-95 disabled:opacity-35"
+                  aria-label="上移"
+                  disabled={index === 0}
+                  onClick={() => moveExercise(exercise.id, -1)}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-2xl bg-muted/55 text-muted-foreground transition active:scale-95 disabled:opacity-35"
+                  aria-label="下移"
+                  disabled={index === exercises.length - 1}
+                  onClick={() => moveExercise(exercise.id, 1)}
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </button>
               </div>
               <div className="min-w-0">
                 <p className="truncate font-medium">{exercise.name}</p>
@@ -365,6 +209,17 @@ export function WorkoutPlanPage() {
                   {exercise.muscleGroup} · {exercise.defaultSets} x {exercise.defaultReps} · {exercise.defaultWeight} kg · {index + 1}
                 </p>
               </div>
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-2xl text-muted-foreground transition active:scale-95"
+                aria-label="删除"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  deleteExercise(exercise.id)
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </CardContent>
           </Card>
         ))}
@@ -406,57 +261,6 @@ export function WorkoutPlanPage() {
           <Plus className="h-4 w-4" />
           添加
         </Button>
-      </Dialog>
-
-      <Dialog open={Boolean(selectedExercise)} title={selectedExercise?.name ?? "动作"} onClose={() => setSelectedExercise(null)}>
-        {selectedExercise ? (
-          <div className="space-y-2">
-            <Button
-              variant="quiet"
-              className="w-full justify-start rounded-3xl"
-              onClick={() => {
-                setEditing(selectedExercise)
-                setSelectedExercise(null)
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-              编辑
-            </Button>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="quiet"
-                className="rounded-3xl"
-                onClick={() => {
-                  moveExercise(selectedExercise.id, -1)
-                  setSelectedExercise(null)
-                }}
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="quiet"
-                className="rounded-3xl"
-                onClick={() => {
-                  moveExercise(selectedExercise.id, 1)
-                  setSelectedExercise(null)
-                }}
-              >
-                <ArrowDown className="h-4 w-4" />
-              </Button>
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start rounded-3xl"
-              onClick={() => {
-                deleteExercise(selectedExercise.id)
-                setSelectedExercise(null)
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-              删除
-            </Button>
-          </div>
-        ) : null}
       </Dialog>
 
       <Dialog open={Boolean(editing)} title="编辑动作" onClose={() => setEditing(null)}>
