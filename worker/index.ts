@@ -982,7 +982,7 @@ async function getRecentMeals(db: D1Database) {
     [defaultUserId],
   )
 
-  return mapMealRows(meals)
+  return mapMealRows(meals, await getMealItemsByMealId(db, meals))
 }
 
 async function getMealsForRange(db: D1Database, start: number, end: number) {
@@ -992,10 +992,46 @@ async function getMealsForRange(db: D1Database, start: number, end: number) {
     [defaultUserId, start, end],
   )
 
-  return mapMealRows(meals)
+  return mapMealRows(meals, await getMealItemsByMealId(db, meals))
 }
 
-function mapMealRows(meals: Array<Record<string, unknown>>) {
+async function getMealItemsByMealId(db: D1Database, meals: Array<Record<string, unknown>>) {
+  const mealIds = meals.map((meal) => String(meal.id)).filter(Boolean)
+  const itemMap = new Map<string, Array<{ name: string; calories: number; protein: number; carbs: number; fat: number }>>()
+
+  if (mealIds.length === 0) {
+    return itemMap
+  }
+
+  const rows = await allRows(
+    db,
+    `SELECT meal_id as mealId, name, calories, protein, carbs, fat
+     FROM meal_items
+     WHERE meal_id IN (${mealIds.map(() => "?").join(", ")})
+     ORDER BY name ASC`,
+    mealIds,
+  )
+
+  for (const row of rows) {
+    const mealId = String(row.mealId)
+    const items = itemMap.get(mealId) ?? []
+    items.push({
+      name: String(row.name),
+      calories: toNumber(row.calories),
+      protein: toNumber(row.protein),
+      carbs: toNumber(row.carbs),
+      fat: toNumber(row.fat),
+    })
+    itemMap.set(mealId, items)
+  }
+
+  return itemMap
+}
+
+function mapMealRows(
+  meals: Array<Record<string, unknown>>,
+  itemsByMealId: Map<string, Array<{ name: string; calories: number; protein: number; carbs: number; fat: number }>>,
+) {
   return meals.map((meal) => ({
     id: String(meal.id),
     mealType: normalizeMealType(meal.mealType),
@@ -1006,6 +1042,7 @@ function mapMealRows(meals: Array<Record<string, unknown>>) {
     carbs: toNumber(meal.carbs),
     fat: toNumber(meal.fat),
     createdAt: toNumber(meal.createdAt),
+    items: itemsByMealId.get(String(meal.id)) ?? [],
   }))
 }
 

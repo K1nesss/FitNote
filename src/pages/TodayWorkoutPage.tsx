@@ -1,4 +1,5 @@
 import { CalendarDays, Check, Clock3, Dumbbell, History, Trash2 } from "lucide-react"
+import type { ComponentProps } from "react"
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -168,12 +169,16 @@ function WorkoutRecords({
 }) {
   const [detail, setDetail] = useState<WorkoutSessionDetail | null>(null)
   const [sets, setSets] = useState<WorkoutSetDraft[]>([])
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const saveSubmit = useSubmitLock()
   const deleteSubmit = useSubmitLock()
+  const exerciseGroups = groupWorkoutSets(sets)
+  const activeGroup = exerciseGroups.find((group) => group.exerciseId === activeExerciseId) ?? null
 
   useEffect(() => {
     setSets((detail?.sets ?? []).map(toSetDraft))
+    setActiveExerciseId(null)
   }, [detail])
 
   async function openSession(id: string) {
@@ -192,6 +197,11 @@ function WorkoutRecords({
 
   function deleteSet(id: string) {
     setSets((current) => current.filter((set) => set.id !== id))
+  }
+
+  function deleteExerciseRecord(exerciseId: string) {
+    setSets((current) => current.filter((set) => set.exerciseId !== exerciseId))
+    setActiveExerciseId((current) => (current === exerciseId ? null : current))
   }
 
   async function saveSession() {
@@ -255,54 +265,59 @@ function WorkoutRecords({
       {sessions.length === 0 ? (
         <div className="rounded-[28px] bg-muted/35 p-5 text-sm font-medium text-muted-foreground">暂无</div>
       ) : null}
-      <Dialog open={Boolean(detail) || loadingDetail} title="训练记录" onClose={() => setDetail(null)}>
+      <Dialog
+        open={Boolean(detail) || loadingDetail}
+        title="训练记录"
+        onClose={() => {
+          setDetail(null)
+          setActiveExerciseId(null)
+        }}
+      >
         {loadingDetail && !detail ? <p className="rounded-3xl bg-muted/60 p-4 text-sm text-muted-foreground">加载中</p> : null}
-        {detail ? (
+        {detail && !activeGroup ? (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <MetricCard label="组数" value={sets.length} unit="组" />
-              <MetricCard
-                label="容量"
-                value={Math.round(
-                  sets.reduce((sum, set) => sum + toDecimal(set.actualWeight, 0) * toInteger(set.actualReps, 0), 0),
-                )}
-                unit="kg"
-              />
+              <MetricCard label="动作" value={exerciseGroups.length} unit="个" />
               <MetricCard label="日期" value={detail.date} />
+              <MetricCard label="组数" value={sets.length} unit="组" />
             </div>
             <div className="space-y-3">
-              {sets.map((set, index) => (
-                <div key={set.id} className="rounded-[28px] bg-muted/55 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{set.exerciseName}</p>
-                      <p className="text-xs text-muted-foreground">第 {index + 1} 组</p>
-                    </div>
-                    <Button size="icon" variant="ghost" aria-label="删除组" onClick={() => deleteSet(set.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">kg</span>
-                      <Input
-                        inputMode="decimal"
-                        value={set.actualWeight}
-                        onChange={(event) => updateSet(set.id, { actualWeight: event.target.value })}
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">次</span>
-                      <Input
-                        inputMode="numeric"
-                        value={set.actualReps}
-                        onChange={(event) => updateSet(set.id, { actualReps: event.target.value })}
-                      />
-                    </label>
-                  </div>
+              {exerciseGroups.map((group) => (
+                <div key={group.exerciseId} className="grid grid-cols-[1fr_auto] items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex min-h-20 items-center justify-between gap-3 rounded-[28px] bg-muted/55 p-4 text-left transition active:scale-[0.99]"
+                    onClick={() => setActiveExerciseId(group.exerciseId)}
+                  >
+                    <span>
+                      <span className="block font-medium">{group.exerciseName}</span>
+                      <span className="block text-sm text-muted-foreground">
+                        {group.sets.length} 组 · {Math.round(group.volume).toLocaleString("en-US")} kg
+                      </span>
+                    </span>
+                    <span className="text-sm font-medium text-muted-foreground">{formatWeight(group.bestWeight)} kg</span>
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="删除动作记录"
+                    onClick={() => deleteExerciseRecord(group.exerciseId)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
+              {exerciseGroups.length === 0 ? (
+                <div className="rounded-3xl bg-muted/55 p-4 text-sm text-muted-foreground">无动作</div>
+              ) : null}
             </div>
+            <MetricCard
+              label="容量"
+              value={Math.round(
+                sets.reduce((sum, set) => sum + toDecimal(set.actualWeight, 0) * toInteger(set.actualReps, 0), 0),
+              )}
+              unit="kg"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Button variant="ghost" className="rounded-3xl" onClick={removeSession} disabled={deleteSubmit.pending}>
                 <Trash2 className="h-4 w-4" />
@@ -313,6 +328,49 @@ function WorkoutRecords({
                 保存
               </Button>
             </div>
+          </>
+        ) : null}
+        {detail && activeGroup ? (
+          <>
+            <Button variant="ghost" className="w-fit rounded-3xl" onClick={() => setActiveExerciseId(null)}>
+              返回
+            </Button>
+            <div className="rounded-[28px] bg-muted/55 p-4">
+              <p className="font-medium">{activeGroup.exerciseName}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {activeGroup.sets.length} 组 · {Math.round(activeGroup.volume).toLocaleString("en-US")} kg
+              </p>
+            </div>
+            <div className="space-y-3">
+              {activeGroup.sets.map((set, index) => (
+                <div key={set.id} className="rounded-[28px] bg-muted/55 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="font-medium">第 {index + 1} 组</p>
+                    <Button size="icon" variant="ghost" aria-label="删除组" onClick={() => deleteSet(set.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <InputWithSuffix
+                      suffix="kg"
+                      inputMode="decimal"
+                      value={set.actualWeight}
+                      onChange={(event) => updateSet(set.id, { actualWeight: event.target.value })}
+                    />
+                    <InputWithSuffix
+                      suffix="次"
+                      inputMode="numeric"
+                      value={set.actualReps}
+                      onChange={(event) => updateSet(set.id, { actualReps: event.target.value })}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button className="w-full rounded-3xl" onClick={saveSession} disabled={saveSubmit.pending}>
+              <Check className="h-4 w-4" />
+              保存
+            </Button>
           </>
         ) : null}
       </Dialog>
@@ -343,6 +401,46 @@ function MetricCard({ label, value, unit }: { label: string; value: string | num
       </p>
     </div>
   )
+}
+
+function InputWithSuffix({ suffix, className, ...props }: ComponentProps<typeof Input> & { suffix: string }) {
+  return (
+    <div className="relative">
+      <Input className={`pr-12 ${className ?? ""}`} {...props} />
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+        {suffix}
+      </span>
+    </div>
+  )
+}
+
+function groupWorkoutSets(sets: WorkoutSetDraft[]) {
+  const map = new Map<
+    string,
+    { exerciseId: string; exerciseName: string; sets: WorkoutSetDraft[]; volume: number; bestWeight: number }
+  >()
+
+  for (const set of sets) {
+    const group = map.get(set.exerciseId) ?? {
+      exerciseId: set.exerciseId,
+      exerciseName: set.exerciseName,
+      sets: [],
+      volume: 0,
+      bestWeight: 0,
+    }
+    const weight = toDecimal(set.actualWeight, 0)
+    group.sets.push(set)
+    group.volume += weight * toInteger(set.actualReps, 0)
+    group.bestWeight = Math.max(group.bestWeight, weight)
+    map.set(set.exerciseId, group)
+  }
+
+  return Array.from(map.values())
+}
+
+function formatWeight(value: number) {
+  const rounded = Math.round(value * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
 function toInteger(value: string, fallback: number) {

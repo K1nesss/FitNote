@@ -1,4 +1,5 @@
-import { Camera, Check, Clipboard, Pencil, Trash2 } from "lucide-react"
+import { Camera, Check, Clipboard, Trash2 } from "lucide-react"
+import type { ComponentProps } from "react"
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -56,10 +57,11 @@ type MainMealType = (typeof mainMealOptions)[number]["value"]
 type MealEditDraft = {
   id: string
   mealType: MealType
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
+  calories: string
+  protein: string
+  carbs: string
+  fat: string
+  items: MealDraftItem[]
 }
 
 const aiPrompt = `请根据我提供的饮食文字或图片，估算热量、蛋白质、碳水、脂肪，并只返回合法 JSON，不要解释。
@@ -92,6 +94,7 @@ export function FoodPage() {
   const [jsonText, setJsonText] = useState("")
   const [mealType, setMealType] = useState<MealType>("lunch")
   const [editingMeal, setEditingMeal] = useState<MealEditDraft | null>(null)
+  const [activeMealItem, setActiveMealItem] = useState<MealDraftItem | null>(null)
   const saveEdit = useSubmitLock()
   const deleteEdit = useSubmitLock()
   const parsedMeal = useMemo(() => parseMealJson(jsonText), [jsonText])
@@ -100,11 +103,13 @@ export function FoodPage() {
     setEditingMeal({
       id: meal.id,
       mealType: meal.mealType,
-      calories: meal.calories,
-      protein: meal.protein,
-      carbs: meal.carbs,
-      fat: meal.fat,
+      calories: String(meal.calories),
+      protein: String(meal.protein),
+      carbs: String(meal.carbs),
+      fat: String(meal.fat),
+      items: meal.items,
     })
+    setActiveMealItem(null)
   }
 
   async function saveEditingMeal() {
@@ -116,10 +121,10 @@ export function FoodPage() {
       await updateMeal(editingMeal.id, {
         mealType: editingMeal.mealType,
         rawText: "手动编辑",
-        calories: editingMeal.calories,
-        protein: editingMeal.protein,
-        carbs: editingMeal.carbs,
-        fat: editingMeal.fat,
+        calories: toNumber(editingMeal.calories),
+        protein: toNumber(editingMeal.protein),
+        carbs: toNumber(editingMeal.carbs),
+        fat: toNumber(editingMeal.fat),
       })
       await refresh()
       setEditingMeal(null)
@@ -196,19 +201,23 @@ export function FoodPage() {
         <h2 className="text-lg font-semibold">记录</h2>
         {(dayData?.meals ?? []).map((meal) => (
           <Card key={meal.id}>
-            <CardContent className="flex items-center justify-between gap-4 p-4">
+            <CardContent
+              className="flex items-center justify-between gap-4 p-4 transition active:scale-[0.99]"
+              role="button"
+              tabIndex={0}
+              onClick={() => openMealEditor(meal)}
+            >
               <div>
                 <p className="font-medium">{meal.title}</p>
-                <p className="text-sm text-muted-foreground">{meal.note}</p>
+                <p className="text-sm text-muted-foreground">
+                  {meal.items.length > 0 ? `${meal.items.length} 个食物` : meal.note}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right text-sm">
                   <p>{meal.calories} kcal</p>
                   <p className="text-muted-foreground">{meal.protein}g P</p>
                 </div>
-                <Button size="icon" variant="ghost" aria-label="编辑" onClick={() => openMealEditor(meal)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -218,59 +227,80 @@ export function FoodPage() {
         ) : null}
       </section>
 
-      <Dialog open={Boolean(editingMeal)} title="饮食记录" onClose={() => setEditingMeal(null)}>
+      <Dialog
+        open={Boolean(editingMeal)}
+        title="饮食记录"
+        onClose={() => {
+          setEditingMeal(null)
+          setActiveMealItem(null)
+        }}
+      >
         {editingMeal ? (
           <>
             <MealTypeControl
               value={editingMeal.mealType}
               onChange={(mealType) => setEditingMeal((current) => (current ? { ...current, mealType } : current))}
             />
+            <MacroGrid
+              calories={toNumber(editingMeal.calories)}
+              protein={toNumber(editingMeal.protein)}
+              carbs={toNumber(editingMeal.carbs)}
+              fat={toNumber(editingMeal.fat)}
+            />
             <div className="grid grid-cols-2 gap-2">
-              <label className="space-y-1">
-                <span className="text-xs text-muted-foreground">kcal</span>
-                <Input
-                  inputMode="decimal"
-                  value={editingMeal.calories}
-                  onChange={(event) =>
-                    setEditingMeal((current) =>
-                      current ? { ...current, calories: Number(event.target.value) || 0 } : current,
-                    )
-                  }
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-muted-foreground">P</span>
-                <Input
-                  inputMode="decimal"
-                  value={editingMeal.protein}
-                  onChange={(event) =>
-                    setEditingMeal((current) =>
-                      current ? { ...current, protein: Number(event.target.value) || 0 } : current,
-                    )
-                  }
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-muted-foreground">C</span>
-                <Input
-                  inputMode="decimal"
-                  value={editingMeal.carbs}
-                  onChange={(event) =>
-                    setEditingMeal((current) => (current ? { ...current, carbs: Number(event.target.value) || 0 } : current))
-                  }
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-muted-foreground">F</span>
-                <Input
-                  inputMode="decimal"
-                  value={editingMeal.fat}
-                  onChange={(event) =>
-                    setEditingMeal((current) => (current ? { ...current, fat: Number(event.target.value) || 0 } : current))
-                  }
-                />
-              </label>
+              <InputWithSuffix
+                suffix="kcal"
+                inputMode="decimal"
+                value={editingMeal.calories}
+                onChange={(event) => setEditingMeal((current) => (current ? { ...current, calories: event.target.value } : current))}
+              />
+              <InputWithSuffix
+                suffix="蛋白 g"
+                inputMode="decimal"
+                value={editingMeal.protein}
+                onChange={(event) => setEditingMeal((current) => (current ? { ...current, protein: event.target.value } : current))}
+              />
+              <InputWithSuffix
+                suffix="碳水 g"
+                inputMode="decimal"
+                value={editingMeal.carbs}
+                onChange={(event) => setEditingMeal((current) => (current ? { ...current, carbs: event.target.value } : current))}
+              />
+              <InputWithSuffix
+                suffix="脂肪 g"
+                inputMode="decimal"
+                value={editingMeal.fat}
+                onChange={(event) => setEditingMeal((current) => (current ? { ...current, fat: event.target.value } : current))}
+              />
             </div>
+            <div className="space-y-2">
+              {editingMeal.items.map((item, index) => (
+                <button
+                  key={`${item.name}-${index}`}
+                  type="button"
+                  className={`flex w-full items-center justify-between rounded-3xl p-4 text-left transition active:scale-[0.99] ${
+                    activeMealItem === item ? "bg-primary text-primary-foreground" : "bg-muted/55"
+                  }`}
+                  onClick={() => setActiveMealItem((current) => (current === item ? null : item))}
+                >
+                  <span className="font-medium">{item.name}</span>
+                  <span className={activeMealItem === item ? "text-primary-foreground/80" : "text-muted-foreground"}>
+                    {formatMacro(item.calories)} kcal
+                  </span>
+                </button>
+              ))}
+              {editingMeal.items.length === 0 ? (
+                <div className="rounded-3xl bg-muted/55 p-4 text-sm text-muted-foreground">无单项</div>
+              ) : null}
+            </div>
+            {activeMealItem ? (
+              <MacroGrid
+                calories={activeMealItem.calories}
+                protein={activeMealItem.protein}
+                carbs={activeMealItem.carbs}
+                fat={activeMealItem.fat}
+              />
+            ) : null}
             <div className="grid grid-cols-2 gap-3">
               <Button variant="ghost" className="rounded-3xl" onClick={deleteEditingMeal} disabled={deleteEdit.pending || saveEdit.pending}>
                 <Trash2 className="h-4 w-4" />
@@ -434,4 +464,41 @@ function MealTypeControl({ value, onChange }: { value: MealType; onChange: (valu
 function toNumber(value: unknown, fallback = 0) {
   const number = typeof value === "number" ? value : Number(value)
   return Number.isFinite(number) ? Math.round(number * 10) / 10 : fallback
+}
+
+function formatMacro(value: number) {
+  const rounded = toNumber(value)
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+function MacroGrid({ calories, protein, carbs, fat }: { calories: number; protein: number; carbs: number; fat: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {[
+        ["热量", calories, "kcal"],
+        ["蛋白", protein, "g"],
+        ["碳水", carbs, "g"],
+        ["脂肪", fat, "g"],
+      ].map(([label, value, unit]) => (
+        <div key={label} className="rounded-3xl bg-muted/60 p-4">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="mt-2 text-xl font-semibold">
+            {formatMacro(Number(value))}
+            <span className="ml-1 text-sm font-medium text-muted-foreground">{unit}</span>
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function InputWithSuffix({ suffix, className, ...props }: ComponentProps<typeof Input> & { suffix: string }) {
+  return (
+    <div className="relative">
+      <Input className={`pr-16 ${className ?? ""}`} {...props} />
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+        {suffix}
+      </span>
+    </div>
+  )
 }

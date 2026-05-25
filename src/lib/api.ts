@@ -50,6 +50,7 @@ export type MealRecord = Macro & {
   note: string
   createdAt: number
   rawText?: string
+  items: Array<Macro & { name: string }>
 }
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "breakfastSnack" | "lunchSnack" | "dinnerSnack"

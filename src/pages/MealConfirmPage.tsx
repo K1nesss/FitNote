@@ -82,7 +82,7 @@ export function MealConfirmPage() {
       })
       sessionStorage.removeItem(mealDraftStorageKey)
       showToast({ title: "已保存" })
-      navigate(`/food?date=${selectedDate}`)
+      navigate(`/food?date=${encodeURIComponent(selectedDate)}`, { replace: true })
     })
   }
 

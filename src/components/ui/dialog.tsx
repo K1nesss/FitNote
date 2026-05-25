@@ -30,11 +30,11 @@ export function Dialog({ open, title, children, onClose, placement = "sheet" }: 
       <Card
         className={
           placement === "center"
-            ? "relative mx-auto max-h-[82dvh] w-full max-w-md overflow-auto rounded-[2rem]"
-            : "relative mx-auto max-h-[86dvh] w-full max-w-md overflow-auto rounded-t-[2rem] sm:rounded-[2rem]"
+            ? "relative mx-auto flex max-h-[82dvh] w-full max-w-md flex-col overflow-hidden rounded-[2rem]"
+            : "relative mx-auto flex max-h-[86dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] sm:rounded-[2rem]"
         }
       >
-        <CardHeader>
+        <CardHeader className="shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle>{title}</CardTitle>
             <Button size="icon" variant="ghost" onClick={onClose} aria-label="关闭">
@@ -42,7 +42,9 @@ export function Dialog({ open, title, children, onClose, placement = "sheet" }: 
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">{children}</CardContent>
+        <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+          {children}
+        </CardContent>
       </Card>
     </div>,
     document.body,

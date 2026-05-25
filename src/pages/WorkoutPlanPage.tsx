@@ -62,6 +62,7 @@ export function WorkoutPlanPage() {
 
   function addLibraryExercise(exercise: LibraryExercise) {
     setExercises((current) => [...current, fromLibraryExercise(exercise)])
+    setQuery("")
     setLibraryOpen(false)
     showToast({ title: "已添加" })
   }
@@ -155,7 +156,15 @@ export function WorkoutPlanPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{weekdayText(selectedDay)}</h2>
         <div className="flex gap-2">
-          <Button size="sm" variant="quiet" aria-label="动作库" onClick={() => setLibraryOpen(true)}>
+          <Button
+            size="sm"
+            variant="quiet"
+            aria-label="动作库"
+            onClick={() => {
+              setQuery("")
+              setLibraryOpen(true)
+            }}
+          >
             <BookOpen className="h-4 w-4" />
           </Button>
           <Button size="sm" variant="quiet" aria-label="新增动作" onClick={() => setCustomOpen(true)}>
