@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast"
 import type { ReminderSettings } from "@/lib/api"
 import { useAppData } from "@/lib/app-data"
 import { requestNotificationPermission } from "@/lib/reminders"
+import { useSubmitLock } from "@/lib/use-submit-lock"
 import { useTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
@@ -91,6 +92,7 @@ function ReminderSettingsPanel({
       weekly: { enabled: false, day: 7, time: "20:30" },
     },
   )
+  const saveSubmit = useSubmitLock()
 
   async function enableNotifications() {
     const permission = await requestNotificationPermission()
@@ -98,8 +100,10 @@ function ReminderSettingsPanel({
   }
 
   async function save() {
-    await appData.saveReminders(reminders)
-    showToast({ title: "已保存" })
+    await saveSubmit.run(async () => {
+      await appData.saveReminders(reminders)
+      showToast({ title: "已保存" })
+    })
   }
 
   return (
@@ -155,7 +159,7 @@ function ReminderSettingsPanel({
           <Bell className="h-4 w-4" />
           权限
         </Button>
-        <Button onClick={save}>
+        <Button onClick={save} disabled={saveSubmit.pending}>
           <Check className="h-4 w-4" />
           保存
         </Button>
@@ -206,6 +210,7 @@ function DataSettings({
   showToast: (toast: { title: string; description?: string }) => void
 }) {
   const [confirming, setConfirming] = useState(false)
+  const clearSubmit = useSubmitLock()
 
   async function exportJson() {
     const data = await appData.exportData()
@@ -220,9 +225,11 @@ function DataSettings({
   }
 
   async function clear() {
-    await appData.clearData()
-    setConfirming(false)
-    showToast({ title: "已清除" })
+    await clearSubmit.run(async () => {
+      await appData.clearData()
+      setConfirming(false)
+      showToast({ title: "已清除" })
+    })
   }
 
   return (
@@ -243,7 +250,7 @@ function DataSettings({
       </div>
       <Dialog open={confirming} title="清除数据" onClose={() => setConfirming(false)}>
         <p className="text-sm text-muted-foreground">训练、饮食、计划和自定义动作会被清除。</p>
-        <Button variant="ghost" className="w-full rounded-3xl" onClick={clear}>
+        <Button variant="ghost" className="w-full rounded-3xl" onClick={clear} disabled={clearSubmit.pending}>
           <Trash2 className="h-4 w-4" />
           清除
         </Button>
@@ -373,24 +380,27 @@ function GoalSettings({
     carbs: String(data?.profile.goals.carbs ?? 240),
     fat: String(data?.profile.goals.fat ?? 70),
   })
+  const saveSubmit = useSubmitLock()
 
   async function saveGoals() {
     if (!data) {
       return
     }
 
-    await onSave({
-      name: data.profile.name,
-      heightCm: data.profile.heightCm,
-      weightKg: data.profile.weightKg,
-      goals: {
-        calories: Number(goals.calories) || 2200,
-        protein: Number(goals.protein) || 150,
-        carbs: Number(goals.carbs) || 240,
-        fat: Number(goals.fat) || 70,
-      },
+    await saveSubmit.run(async () => {
+      await onSave({
+        name: data.profile.name,
+        heightCm: data.profile.heightCm,
+        weightKg: data.profile.weightKg,
+        goals: {
+          calories: Number(goals.calories) || 2200,
+          protein: Number(goals.protein) || 150,
+          carbs: Number(goals.carbs) || 240,
+          fat: Number(goals.fat) || 70,
+        },
+      })
+      onSaved()
     })
-    onSaved()
   }
 
   return (
@@ -417,7 +427,7 @@ function GoalSettings({
           onChange={(event) => setGoals((current) => ({ ...current, fat: event.target.value }))}
         />
       </div>
-      <Button className="w-full rounded-3xl" onClick={saveGoals}>
+      <Button className="w-full rounded-3xl" onClick={saveGoals} disabled={saveSubmit.pending}>
         <Target className="h-4 w-4" />
         保存
       </Button>

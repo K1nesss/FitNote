@@ -139,6 +139,12 @@ export type MealPayload = Macro & {
   items: Array<Macro & { name: string }>
 }
 
+export type MealUpdatePayload = Partial<Macro> & {
+  mealType?: MealType
+  rawText?: string
+  items?: Array<Macro & { name: string }>
+}
+
 export type WorkoutSessionPayload = {
   date?: string
   planId: string | null
@@ -174,6 +180,14 @@ export async function savePlan(weekday: number, payload: PlanPayload) {
 
 export async function saveMeal(payload: MealPayload) {
   return request<BootstrapData>("/api/meals", { method: "POST", body: payload })
+}
+
+export async function updateMeal(id: string, payload: MealUpdatePayload) {
+  return request<BootstrapData>(`/api/meals/${encodeURIComponent(id)}`, { method: "PUT", body: payload })
+}
+
+export async function deleteMeal(id: string) {
+  return request<BootstrapData>(`/api/meals/${encodeURIComponent(id)}`, { method: "DELETE" })
 }
 
 export async function saveWorkoutSession(payload: WorkoutSessionPayload) {

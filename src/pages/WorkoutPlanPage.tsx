@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, BookOpen, Check, GripVertical, Pencil, Plus, Search, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { PointerEvent } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +10,8 @@ import { LoadingState } from "@/components/ui/state"
 import { useToast } from "@/components/ui/toast"
 import { getTodayWeekday, useAppData, weekdayText } from "@/lib/app-data"
 import type { LibraryExercise, PlanExercise } from "@/lib/api"
+import { useSubmitLock } from "@/lib/use-submit-lock"
+import { cn } from "@/lib/utils"
 
 type ExerciseDraft = {
   id: string
@@ -34,6 +37,12 @@ export function WorkoutPlanPage() {
   const [editing, setEditing] = useState<ExerciseDraft | null>(null)
   const [selectedExercise, setSelectedExercise] = useState<ExerciseDraft | null>(null)
   const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const dragTimerRef = useRef<number | null>(null)
+  const dragIdRef = useRef<string | null>(null)
+  const suppressClickRef = useRef(false)
+  const saveSubmit = useSubmitLock()
+  const createSubmit = useSubmitLock()
   const canSave = exercises.length > 0
 
   const currentPlan = data?.plans.find((plan) => plan.weekday === selectedDay)
@@ -68,12 +77,14 @@ export function WorkoutPlanPage() {
       return
     }
 
-    const next = { ...draft, id: crypto.randomUUID(), libraryExerciseId: null }
-    await createExercise(draft)
-    setExercises((current) => [...current, next])
-    setDraft({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
-    setCustomOpen(false)
-    showToast({ title: "已添加" })
+    await createSubmit.run(async () => {
+      const next = { ...draft, id: crypto.randomUUID(), libraryExerciseId: null }
+      await createExercise(draft)
+      setExercises((current) => [...current, next])
+      setDraft({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+      setCustomOpen(false)
+      showToast({ title: "已添加" })
+    })
   }
 
   async function saveCurrentPlan() {
@@ -82,8 +93,10 @@ export function WorkoutPlanPage() {
       return
     }
 
-    await savePlan(selectedDay, { title, exercises })
-    showToast({ title: "已保存" })
+    await saveSubmit.run(async () => {
+      await savePlan(selectedDay, { title, exercises })
+      showToast({ title: "已保存" })
+    })
   }
 
   function saveEditing() {
@@ -114,6 +127,77 @@ export function WorkoutPlanPage() {
 
       return next
     })
+  }
+
+  function reorderExercise(activeId: string, targetId: string) {
+    if (activeId === targetId) {
+      return
+    }
+
+    setExercises((current) => {
+      const activeIndex = current.findIndex((exercise) => exercise.id === activeId)
+      const targetIndex = current.findIndex((exercise) => exercise.id === targetId)
+
+      if (activeIndex < 0 || targetIndex < 0 || activeIndex === targetIndex) {
+        return current
+      }
+
+      const next = [...current]
+      const [item] = next.splice(activeIndex, 1)
+      next.splice(targetIndex, 0, item)
+      return next
+    })
+  }
+
+  function clearDragTimer() {
+    if (dragTimerRef.current !== null) {
+      window.clearTimeout(dragTimerRef.current)
+      dragTimerRef.current = null
+    }
+  }
+
+  function startDrag(id: string, event: PointerEvent<HTMLElement>) {
+    clearDragTimer()
+    const target = event.currentTarget
+    const pointerId = event.pointerId
+    dragTimerRef.current = window.setTimeout(() => {
+      dragIdRef.current = id
+      suppressClickRef.current = true
+      setDraggingId(id)
+      target.setPointerCapture(pointerId)
+      navigator.vibrate?.(12)
+    }, 260)
+  }
+
+  function moveDrag(event: PointerEvent<HTMLElement>) {
+    const activeId = dragIdRef.current
+
+    if (!activeId) {
+      return
+    }
+
+    event.preventDefault()
+    const element = document.elementFromPoint(event.clientX, event.clientY)
+    const target = element?.closest<HTMLElement>("[data-exercise-id]")
+    const targetId = target?.dataset.exerciseId
+
+    if (targetId) {
+      reorderExercise(activeId, targetId)
+    }
+  }
+
+  function endDrag(event?: PointerEvent<HTMLElement>) {
+    clearDragTimer()
+
+    if (dragIdRef.current && event?.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    dragIdRef.current = null
+    setDraggingId(null)
+    window.setTimeout(() => {
+      suppressClickRef.current = false
+    }, 0)
   }
 
   return (
@@ -169,14 +253,33 @@ export function WorkoutPlanPage() {
           </div>
         ) : null}
         {exercises.map((exercise, index) => (
-          <Card key={exercise.id}>
+          <Card key={exercise.id} data-exercise-id={exercise.id}>
             <CardContent
-              className="grid min-h-20 grid-cols-[auto_1fr] items-center gap-3 p-4 active:scale-[0.99]"
+              className={cn(
+                "grid min-h-20 grid-cols-[auto_1fr] items-center gap-3 p-4 transition active:scale-[0.99]",
+                draggingId === exercise.id && "scale-[1.015] bg-primary/8",
+              )}
               role="button"
               tabIndex={0}
-              onClick={() => setSelectedExercise(exercise)}
+              onClick={() => {
+                if (suppressClickRef.current) {
+                  return
+                }
+
+                setSelectedExercise(exercise)
+              }}
             >
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
+              <button
+                type="button"
+                className="touch-none rounded-2xl p-2 text-muted-foreground active:scale-95"
+                aria-label="排序"
+                onPointerDown={(event) => startDrag(exercise.id, event)}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+              >
+                <GripVertical className="h-5 w-5" />
+              </button>
               <div className="min-w-0">
                 <p className="truncate font-medium">{exercise.name}</p>
                 <p className="text-sm text-muted-foreground">
@@ -188,7 +291,7 @@ export function WorkoutPlanPage() {
         ))}
       </div>
 
-      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentPlan} disabled={!canSave}>
+      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentPlan} disabled={!canSave || saveSubmit.pending}>
         <Check className="h-5 w-5" />
         保存
       </Button>
@@ -220,7 +323,7 @@ export function WorkoutPlanPage() {
 
       <Dialog open={customOpen} title="新增动作" onClose={() => setCustomOpen(false)}>
         <ExerciseInputs draft={draft} onChange={setDraft} />
-        <Button className="w-full rounded-3xl" onClick={addCustomExercise}>
+        <Button className="w-full rounded-3xl" onClick={addCustomExercise} disabled={createSubmit.pending}>
           <Plus className="h-4 w-4" />
           添加
         </Button>

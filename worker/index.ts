@@ -153,6 +153,23 @@ export default {
         return json(await getBootstrap(db))
       }
 
+      if (url.pathname.startsWith("/api/meals/") && request.method === "PUT") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const mealId = decodeURIComponent(url.pathname.replace("/api/meals/", ""))
+        const body = await readBody<MealInput>(request)
+        await updateMeal(db, mealId, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname.startsWith("/api/meals/") && request.method === "DELETE") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const mealId = decodeURIComponent(url.pathname.replace("/api/meals/", ""))
+        await deleteMeal(db, mealId)
+        return json(await getBootstrap(db))
+      }
+
       if (url.pathname === "/api/workout-sessions" && request.method === "POST") {
         const db = getDB(env)
         await ensureDefaults(db)
@@ -617,6 +634,75 @@ async function saveMeal(db: D1Database, input: MealInput) {
       }),
     )
   }
+}
+
+async function updateMeal(db: D1Database, mealId: string, input: MealInput) {
+  const existing = await db
+    .prepare("SELECT id, meal_type as mealType, raw_text as rawText, calories, protein, carbs, fat FROM meals WHERE id = ? AND user_id = ?")
+    .bind(mealId, defaultUserId)
+    .first<Record<string, unknown>>()
+
+  if (!existing) {
+    throw new Error("Meal not found")
+  }
+
+  const items = Array.isArray(input.items) ? input.items : []
+  const totals = normalizeMealTotals(
+    {
+      calories: input.calories ?? toNumber(existing.calories),
+      protein: input.protein ?? toNumber(existing.protein),
+      carbs: input.carbs ?? toNumber(existing.carbs),
+      fat: input.fat ?? toNumber(existing.fat),
+    },
+    items,
+  )
+
+  await db
+    .prepare(
+      "UPDATE meals SET meal_type = ?, raw_text = ?, calories = ?, protein = ?, carbs = ?, fat = ? WHERE id = ? AND user_id = ?",
+    )
+    .bind(
+      normalizeMealType(input.mealType ?? existing.mealType),
+      normalizeText(input.rawText ?? existing.rawText, "AI JSON"),
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      mealId,
+      defaultUserId,
+    )
+    .run()
+
+  if (Array.isArray(input.items)) {
+    await db.prepare("DELETE FROM meal_items WHERE meal_id = ?").bind(mealId).run()
+
+    if (items.length > 0) {
+      await db.batch(
+        items.map((item) => {
+          const normalized = normalizeMealItem(item)
+          return db
+            .prepare("INSERT INTO meal_items (id, meal_id, name, calories, protein, carbs, fat) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(crypto.randomUUID(), mealId, normalized.name, normalized.calories, normalized.protein, normalized.carbs, normalized.fat)
+        }),
+      )
+    }
+  }
+}
+
+async function deleteMeal(db: D1Database, mealId: string) {
+  const existing = await db
+    .prepare("SELECT id FROM meals WHERE id = ? AND user_id = ?")
+    .bind(mealId, defaultUserId)
+    .first()
+
+  if (!existing) {
+    throw new Error("Meal not found")
+  }
+
+  await db.batch([
+    db.prepare("DELETE FROM meal_items WHERE meal_id = ?").bind(mealId),
+    db.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(mealId, defaultUserId),
+  ])
 }
 
 async function saveWorkoutSession(db: D1Database, input: WorkoutSessionInput) {

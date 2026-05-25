@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useAppData } from "@/lib/app-data"
 import { isDateKey, todayKey } from "@/lib/date"
+import { useSubmitLock } from "@/lib/use-submit-lock"
 import { mealDraftStorageKey, mealTypeOptions, type MealDraft, type MealDraftItem } from "@/pages/FoodPage"
 
 type MealItem = MealDraftItem & {
@@ -21,6 +22,7 @@ export function MealConfirmPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { saveMeal } = useAppData()
+  const saveSubmit = useSubmitLock()
   const [mealItems, setMealItems] = useState<MealItem[]>(() => loadMealItems())
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0 })
@@ -67,19 +69,21 @@ export function MealConfirmPage() {
   }
 
   async function saveCurrentMeal() {
-    await saveMeal({
-      date: selectedDate,
-      rawText: "AI JSON",
-      mealType,
-      calories: total.calories,
-      protein: total.protein,
-      carbs: total.carbs,
-      fat: total.fat,
-      items: mealItems.map(({ id: _id, ...item }) => item),
+    await saveSubmit.run(async () => {
+      await saveMeal({
+        date: selectedDate,
+        rawText: "AI JSON",
+        mealType,
+        calories: total.calories,
+        protein: total.protein,
+        carbs: total.carbs,
+        fat: total.fat,
+        items: mealItems.map(({ id: _id, ...item }) => item),
+      })
+      sessionStorage.removeItem(mealDraftStorageKey)
+      showToast({ title: "已保存" })
+      navigate(`/food?date=${selectedDate}`)
     })
-    sessionStorage.removeItem(mealDraftStorageKey)
-    showToast({ title: "已保存" })
-    navigate(`/food?date=${selectedDate}`)
   }
 
   return (
@@ -176,7 +180,7 @@ export function MealConfirmPage() {
         ))}
       </section>
 
-      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentMeal}>
+      <Button className="w-full rounded-3xl" size="lg" onClick={saveCurrentMeal} disabled={saveSubmit.pending}>
         <Check className="h-5 w-5" />
         保存
       </Button>

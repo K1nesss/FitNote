@@ -6,6 +6,7 @@ import type {
   BootstrapData,
   ExercisePayload,
   MealPayload,
+  MealUpdatePayload,
   PlanPayload,
   ProfilePayload,
   ReminderSettings,
@@ -23,6 +24,8 @@ type AppDataContextValue = {
   createExercise: (payload: ExercisePayload) => Promise<void>
   savePlan: (weekday: number, payload: PlanPayload) => Promise<void>
   saveMeal: (payload: MealPayload) => Promise<void>
+  updateMeal: (id: string, payload: MealUpdatePayload) => Promise<void>
+  deleteMeal: (id: string) => Promise<void>
   saveWorkoutSession: (payload: WorkoutSessionPayload) => Promise<void>
   saveReminders: (payload: ReminderSettings) => Promise<void>
   exportData: () => Promise<Record<string, unknown>>
@@ -77,6 +80,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createExercise: (payload) => apply(api.createExercise(payload)),
       savePlan: (weekday, payload) => apply(api.savePlan(weekday, payload)),
       saveMeal: (payload) => apply(api.saveMeal(payload)),
+      updateMeal: (id, payload) => apply(api.updateMeal(id, payload)),
+      deleteMeal: (id) => apply(api.deleteMeal(id)),
       saveWorkoutSession: (payload) => apply(api.saveWorkoutSession(payload)),
       saveReminders: (payload) => apply(api.saveReminders(payload)),
       exportData: () => api.exportData(),

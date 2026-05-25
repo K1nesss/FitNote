@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/ui/state"
 import { useAppData } from "@/lib/app-data"
 import { timestampOnDate, weekdayNumber } from "@/lib/date"
 import { useSelectedDateParam } from "@/lib/use-selected-date"
+import { useSubmitLock } from "@/lib/use-submit-lock"
 
 type CompletedSet = {
   id: string
@@ -33,6 +34,7 @@ export function WorkoutSessionPage() {
   const [reps, setReps] = useState(firstExercise?.reps ?? 0)
   const [sets, setSets] = useState<CompletedSet[]>([])
   const [startedAt] = useState(() => timestampOnDate(selectedDate))
+  const finishSubmit = useSubmitLock()
 
   useEffect(() => {
     if (firstExercise) {
@@ -90,37 +92,39 @@ export function WorkoutSessionPage() {
   }
 
   async function finishWorkout() {
-    const finishedAt = Date.now()
-    await saveWorkoutSession({
-      date: selectedDate,
-      planId: activePlan.id,
-      startedAt,
-      finishedAt: timestampOnDate(selectedDate, finishedAt),
-      sets: sets.map((set, index) => ({
-        exerciseId: set.exerciseId,
-        setIndex: index + 1,
-        actualReps: set.reps,
-        actualWeight: set.weight,
-      })),
-    })
-
-    const volume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
-    sessionStorage.setItem(
-      workoutSummaryStorageKey,
-      JSON.stringify({
-        title: activePlan.title,
-        durationMinutes: Math.max(1, Math.round((finishedAt - startedAt) / 60000)),
-        sets: sets.length,
-        volume,
-        exercises: activePlan.exercises.map((item) => ({
-          id: item.id,
-          name: item.name,
-          muscle: item.muscle,
-          sets: sets.filter((set) => set.exerciseId === item.id).length,
+    await finishSubmit.run(async () => {
+      const finishedAt = Date.now()
+      await saveWorkoutSession({
+        date: selectedDate,
+        planId: activePlan.id,
+        startedAt,
+        finishedAt: timestampOnDate(selectedDate, finishedAt),
+        sets: sets.map((set, index) => ({
+          exerciseId: set.exerciseId,
+          setIndex: index + 1,
+          actualReps: set.reps,
+          actualWeight: set.weight,
         })),
-      }),
-    )
-    navigate(`/workout/summary?date=${selectedDate}`)
+      })
+
+      const volume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
+      sessionStorage.setItem(
+        workoutSummaryStorageKey,
+        JSON.stringify({
+          title: activePlan.title,
+          durationMinutes: Math.max(1, Math.round((finishedAt - startedAt) / 60000)),
+          sets: sets.length,
+          volume,
+          exercises: activePlan.exercises.map((item) => ({
+            id: item.id,
+            name: item.name,
+            muscle: item.muscle,
+            sets: sets.filter((set) => set.exerciseId === item.id).length,
+          })),
+        }),
+      )
+      navigate(`/workout/summary?date=${selectedDate}`)
+    })
   }
 
   return (
@@ -209,7 +213,7 @@ export function WorkoutSessionPage() {
           <ChevronRight className="h-4 w-4" />
           下一个
         </Button>
-        <Button variant="quiet" className="w-full" onClick={finishWorkout}>
+        <Button variant="quiet" className="w-full" onClick={finishWorkout} disabled={finishSubmit.pending}>
           结束
         </Button>
       </div>
