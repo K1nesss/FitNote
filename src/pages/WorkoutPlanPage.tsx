@@ -40,6 +40,7 @@ export function WorkoutPlanPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const dragTimerRef = useRef<number | null>(null)
   const dragIdRef = useRef<string | null>(null)
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const suppressClickRef = useRef(false)
   const saveSubmit = useSubmitLock()
   const createSubmit = useSubmitLock()
@@ -160,11 +161,15 @@ export function WorkoutPlanPage() {
     clearDragTimer()
     const target = event.currentTarget
     const pointerId = event.pointerId
+    dragStartRef.current = { x: event.clientX, y: event.clientY }
+
     dragTimerRef.current = window.setTimeout(() => {
       dragIdRef.current = id
       suppressClickRef.current = true
       setDraggingId(id)
-      target.setPointerCapture(pointerId)
+      if (!target.hasPointerCapture(pointerId)) {
+        target.setPointerCapture(pointerId)
+      }
       navigator.vibrate?.(12)
     }, 260)
   }
@@ -173,6 +178,13 @@ export function WorkoutPlanPage() {
     const activeId = dragIdRef.current
 
     if (!activeId) {
+      const start = dragStartRef.current
+
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) {
+        clearDragTimer()
+        dragStartRef.current = null
+      }
+
       return
     }
 
@@ -194,6 +206,7 @@ export function WorkoutPlanPage() {
     }
 
     dragIdRef.current = null
+    dragStartRef.current = null
     setDraggingId(null)
     window.setTimeout(() => {
       suppressClickRef.current = false
@@ -261,6 +274,10 @@ export function WorkoutPlanPage() {
               )}
               role="button"
               tabIndex={0}
+              onPointerDown={(event) => startDrag(exercise.id, event)}
+              onPointerMove={moveDrag}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
               onClick={() => {
                 if (suppressClickRef.current) {
                   return
@@ -269,17 +286,9 @@ export function WorkoutPlanPage() {
                 setSelectedExercise(exercise)
               }}
             >
-              <button
-                type="button"
-                className="touch-none rounded-2xl p-2 text-muted-foreground active:scale-95"
-                aria-label="排序"
-                onPointerDown={(event) => startDrag(exercise.id, event)}
-                onPointerMove={moveDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-              >
+              <div className="rounded-2xl p-2 text-muted-foreground" aria-hidden="true">
                 <GripVertical className="h-5 w-5" />
-              </button>
+              </div>
               <div className="min-w-0">
                 <p className="truncate font-medium">{exercise.name}</p>
                 <p className="text-sm text-muted-foreground">
