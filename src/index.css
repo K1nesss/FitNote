@@ -70,6 +70,29 @@ html.dark {
   -webkit-tap-highlight-color: transparent;
 }
 
+html,
+body,
+#root {
+  -webkit-touch-callout: none;
+}
+
+button,
+a,
+[role="button"],
+nav,
+.soft-surface {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 body {
   margin: 0;
   min-width: 320px;

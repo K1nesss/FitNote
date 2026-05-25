@@ -1,4 +1,4 @@
-import { Camera, Check, Clipboard, Pencil, Sparkles, Trash2 } from "lucide-react"
+import { Camera, Check, Clipboard, Pencil, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -189,43 +189,6 @@ export function FoodPage() {
               <Check className="h-5 w-5" />
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>估算</CardTitle>
-            <Sparkles className="h-5 w-5 text-muted-foreground" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {parsedMeal ? (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  ["热量", parsedMeal.calories, "kcal"],
-                  ["蛋白质", parsedMeal.protein, "g"],
-                  ["碳水", parsedMeal.carbs, "g"],
-                  ["脂肪", parsedMeal.fat, "g"],
-                ].map(([label, value, unit]) => (
-                  <div key={label} className="rounded-3xl bg-muted/70 p-4">
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="mt-2 text-2xl font-semibold">
-                      {value}
-                      <span className="ml-1 text-sm text-muted-foreground">{unit}</span>
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <Button className="w-full rounded-3xl" size="lg" onClick={openConfirm}>
-                <Check className="h-5 w-5" />
-                确认
-              </Button>
-            </>
-          ) : (
-            <div className="rounded-3xl bg-muted/70 p-5 text-sm text-muted-foreground">等待 AI JSON</div>
-          )}
         </CardContent>
       </Card>
 
