@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Minus, Plus } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -30,16 +30,16 @@ export function WorkoutSessionPage() {
   const todayPlan = data?.plans.find((plan) => plan.weekday === selectedWeekday) ?? null
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const firstExercise = todayPlan?.exercises[0]
-  const [weight, setWeight] = useState(firstExercise?.weight ?? 0)
-  const [reps, setReps] = useState(firstExercise?.reps ?? 0)
+  const [weight, setWeight] = useState(String(firstExercise?.weight ?? 0))
+  const [reps, setReps] = useState(String(firstExercise?.reps ?? 0))
   const [sets, setSets] = useState<CompletedSet[]>([])
   const [startedAt] = useState(() => timestampOnDate(selectedDate))
   const finishSubmit = useSubmitLock()
 
   useEffect(() => {
     if (firstExercise) {
-      setWeight(firstExercise.weight)
-      setReps(firstExercise.reps)
+      setWeight(String(firstExercise.weight))
+      setReps(String(firstExercise.reps))
     }
   }, [firstExercise])
 
@@ -77,18 +77,33 @@ export function WorkoutSessionPage() {
   const completedForExercise = sets.filter((set) => set.exerciseId === exercise.id)
 
   function completeSet() {
+    const actualWeight = parseDecimal(weight)
+    const actualReps = parseInteger(reps)
+
     setSets((current) => [
       ...current,
-      { id: crypto.randomUUID(), exerciseId: exercise.id, exerciseName: exercise.name, weight, reps },
+      { id: crypto.randomUUID(), exerciseId: exercise.id, exerciseName: exercise.name, weight: actualWeight, reps: actualReps },
     ])
+  }
+
+  function goPreviousExercise() {
+    const previousIndex = Math.max(exerciseIndex - 1, 0)
+    const previousExercise = activePlan.exercises[previousIndex]
+    setExerciseIndex(previousIndex)
+    setWeight(String(previousExercise.weight))
+    setReps(String(previousExercise.reps))
   }
 
   function goNextExercise() {
     const nextIndex = Math.min(exerciseIndex + 1, activePlan.exercises.length - 1)
     const nextExercise = activePlan.exercises[nextIndex]
     setExerciseIndex(nextIndex)
-    setWeight(nextExercise.weight)
-    setReps(nextExercise.reps)
+    setWeight(String(nextExercise.weight))
+    setReps(String(nextExercise.reps))
+  }
+
+  function deleteSet(id: string) {
+    setSets((current) => current.filter((set) => set.id !== id))
   }
 
   async function finishWorkout() {
@@ -134,46 +149,63 @@ export function WorkoutSessionPage() {
           {exerciseIndex + 1} / {activePlan.exercises.length}
         </p>
         <h2 className="text-3xl font-semibold">{exercise.name}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {completedForExercise.length} / {exercise.sets} 组
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>当前组</CardTitle>
-            <Badge>{exercise.muscle}</Badge>
+            <div className="flex gap-2">
+              <Badge>{exercise.muscle}</Badge>
+              <Badge>{exercise.sets} 组</Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-2">
-              <span className="text-sm text-muted-foreground">重量 kg</span>
-              <Input
-                inputMode="decimal"
-                value={weight}
-                onChange={(event) => setWeight(Number(event.target.value) || 0)}
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm text-muted-foreground">次数</span>
-              <Input
-                inputMode="numeric"
-                value={reps}
-                onChange={(event) => setReps(Number(event.target.value) || 0)}
-              />
-            </label>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-3xl bg-muted/60 p-4">
+              <p className="text-xs text-muted-foreground">目标</p>
+              <p className="mt-2 text-xl font-semibold">
+                {exercise.sets}
+                <span className="ml-1 text-sm font-medium text-muted-foreground">组</span>
+              </p>
+            </div>
+            <div className="rounded-3xl bg-muted/60 p-4">
+              <p className="text-xs text-muted-foreground">次数</p>
+              <p className="mt-2 text-xl font-semibold">
+                {exercise.reps}
+                <span className="ml-1 text-sm font-medium text-muted-foreground">次</span>
+              </p>
+            </div>
+            <div className="rounded-3xl bg-muted/60 p-4">
+              <p className="text-xs text-muted-foreground">重量</p>
+              <p className="mt-2 text-xl font-semibold">
+                {exercise.weight}
+                <span className="ml-1 text-sm font-medium text-muted-foreground">kg</span>
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="quiet"
-              onClick={() => setWeight((value) => Math.max(value - 2.5, 0))}
-              aria-label="减重"
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button variant="quiet" onClick={() => setWeight((value) => value + 2.5)} aria-label="加重">
-              <Plus className="h-4 w-4" />
-            </Button>
+            <label className="space-y-2">
+              <span className="text-sm text-muted-foreground">实际重量 kg</span>
+              <Input
+                inputMode="decimal"
+                value={weight}
+                onChange={(event) => setWeight(event.target.value)}
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm text-muted-foreground">实际次数</span>
+              <Input
+                inputMode="numeric"
+                value={reps}
+                onChange={(event) => setReps(event.target.value)}
+              />
+            </label>
           </div>
 
           <Button size="lg" className="w-full rounded-3xl" onClick={completeSet}>
@@ -193,17 +225,31 @@ export function WorkoutSessionPage() {
           ) : (
             completedForExercise.map((set, index) => (
               <div key={set.id} className="flex items-center justify-between rounded-3xl bg-muted/70 p-4">
-                <span>第 {index + 1} 组</span>
-                <span className="font-medium">
-                  {set.weight} kg x {set.reps}
-                </span>
+                <div>
+                  <p className="font-medium">第 {index + 1} 组</p>
+                  <p className="text-sm text-muted-foreground">
+                    {set.weight} kg x {set.reps} 次
+                  </p>
+                </div>
+                <Button size="icon" variant="ghost" aria-label="删除组" onClick={() => deleteSet(set.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ))
           )}
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={goPreviousExercise}
+          disabled={exerciseIndex === 0}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          上一个
+        </Button>
         <Button
           variant="secondary"
           className="w-full"
@@ -219,4 +265,14 @@ export function WorkoutSessionPage() {
       </div>
     </div>
   )
+}
+
+function parseDecimal(value: string) {
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.max(0, Math.round(number * 10) / 10) : 0
+}
+
+function parseInteger(value: string) {
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0
 }

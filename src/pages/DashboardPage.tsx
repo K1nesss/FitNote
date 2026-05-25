@@ -67,7 +67,7 @@ export function DashboardPage() {
 
       <section className="grid grid-cols-2 gap-3">
         <Button asChild size="lg" className="h-16 rounded-3xl">
-          <Link to={todayPlan?.exercises.length ? "/workout/session" : "/workout/plan"}>
+          <Link to={todayPlan?.exercises.length ? "/workout" : "/workout/plan"}>
             <Dumbbell className="h-5 w-5" />
             训练
           </Link>

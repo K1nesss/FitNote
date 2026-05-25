@@ -11,6 +11,7 @@ import type {
   ProfilePayload,
   ReminderSettings,
   WorkoutSessionPayload,
+  WorkoutSessionUpdatePayload,
 } from "@/lib/api"
 import { useReminderScheduler } from "@/lib/reminders"
 
@@ -27,6 +28,8 @@ type AppDataContextValue = {
   updateMeal: (id: string, payload: MealUpdatePayload) => Promise<void>
   deleteMeal: (id: string) => Promise<void>
   saveWorkoutSession: (payload: WorkoutSessionPayload) => Promise<void>
+  updateWorkoutSession: (id: string, payload: WorkoutSessionUpdatePayload) => Promise<void>
+  deleteWorkoutSession: (id: string) => Promise<void>
   saveReminders: (payload: ReminderSettings) => Promise<void>
   exportData: () => Promise<Record<string, unknown>>
   clearData: () => Promise<void>
@@ -83,6 +86,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateMeal: (id, payload) => apply(api.updateMeal(id, payload)),
       deleteMeal: (id) => apply(api.deleteMeal(id)),
       saveWorkoutSession: (payload) => apply(api.saveWorkoutSession(payload)),
+      updateWorkoutSession: (id, payload) => apply(api.updateWorkoutSession(id, payload)),
+      deleteWorkoutSession: (id) => apply(api.deleteWorkoutSession(id)),
       saveReminders: (payload) => apply(api.saveReminders(payload)),
       exportData: () => api.exportData(),
       clearData: () => apply(api.clearData()),

@@ -178,6 +178,30 @@ export default {
         return json(await getBootstrap(db))
       }
 
+      if (url.pathname.startsWith("/api/workout-sessions/") && request.method === "GET") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const sessionId = decodeURIComponent(url.pathname.replace("/api/workout-sessions/", ""))
+        return json(await getWorkoutSessionDetail(db, sessionId))
+      }
+
+      if (url.pathname.startsWith("/api/workout-sessions/") && request.method === "PUT") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const sessionId = decodeURIComponent(url.pathname.replace("/api/workout-sessions/", ""))
+        const body = await readBody<WorkoutSessionInput>(request)
+        await updateWorkoutSession(db, sessionId, body)
+        return json(await getBootstrap(db))
+      }
+
+      if (url.pathname.startsWith("/api/workout-sessions/") && request.method === "DELETE") {
+        const db = getDB(env)
+        await ensureDefaults(db)
+        const sessionId = decodeURIComponent(url.pathname.replace("/api/workout-sessions/", ""))
+        await deleteWorkoutSession(db, sessionId)
+        return json(await getBootstrap(db))
+      }
+
       if (url.pathname === "/api/reminders" && request.method === "PUT") {
         const db = getDB(env)
         await ensureDefaults(db)
@@ -249,8 +273,17 @@ type WorkoutSessionInput = {
   date?: string
   planId?: string
   startedAt?: number
-  finishedAt?: number
-  sets?: Array<{ exerciseId?: string; setIndex?: number; actualReps?: number; actualWeight?: number }>
+  finishedAt?: number | null
+  sets?: WorkoutSetInput[]
+}
+
+type WorkoutSetInput = {
+  id?: string
+  exerciseId?: string
+  setIndex?: number
+  actualReps?: number | string
+  actualWeight?: number | string
+  completedAt?: number
 }
 
 type ReminderSettings = {
@@ -575,17 +608,39 @@ async function savePlan(db: D1Database, weekday: number, input: PlanInput) {
     .bind(planId, defaultUserId, weekday, normalizeText(input.title, `周${weekdayLabel(weekday)}训练`), now)
     .run()
 
-  await db.prepare("DELETE FROM workout_exercises WHERE plan_id = ?").bind(planId).run()
+  const incomingIds = exercises
+    .map((exercise) => (typeof exercise.id === "string" && exercise.id.trim() ? exercise.id.trim() : null))
+    .filter((id): id is string => Boolean(id))
+
+  if (incomingIds.length > 0) {
+    await db
+      .prepare(`DELETE FROM workout_exercises WHERE plan_id = ? AND id NOT IN (${incomingIds.map(() => "?").join(", ")})`)
+      .bind(planId, ...incomingIds)
+      .run()
+  } else {
+    await db.prepare("DELETE FROM workout_exercises WHERE plan_id = ?").bind(planId).run()
+  }
 
   if (exercises.length > 0) {
     await db.batch(
-      exercises.map((exercise, index) =>
-        db
+      exercises.map((exercise, index) => {
+        const exerciseId = typeof exercise.id === "string" && exercise.id.trim() ? exercise.id.trim() : crypto.randomUUID()
+
+        return db
           .prepare(
-            "INSERT INTO workout_exercises (id, plan_id, library_exercise_id, name, muscle_group, target_sets, target_reps, target_weight, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            `INSERT INTO workout_exercises (id, plan_id, library_exercise_id, name, muscle_group, target_sets, target_reps, target_weight, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+              library_exercise_id = excluded.library_exercise_id,
+              name = excluded.name,
+              muscle_group = excluded.muscle_group,
+              target_sets = excluded.target_sets,
+              target_reps = excluded.target_reps,
+              target_weight = excluded.target_weight,
+              sort_order = excluded.sort_order`,
           )
           .bind(
-            crypto.randomUUID(),
+            exerciseId,
             planId,
             exercise.libraryExerciseId ?? null,
             normalizeText(exercise.name, "动作"),
@@ -594,8 +649,8 @@ async function savePlan(db: D1Database, weekday: number, input: PlanInput) {
             Math.max(1, toNumber(exercise.defaultReps, 10)),
             Math.max(0, toNumber(exercise.defaultWeight, 0)),
             index + 1,
-          ),
-      ),
+          )
+      }),
     )
   }
 }
@@ -736,6 +791,117 @@ async function saveWorkoutSession(db: D1Database, input: WorkoutSessionInput) {
       ),
     )
   }
+}
+
+async function getWorkoutSessionDetail(db: D1Database, sessionId: string) {
+  const session = await db
+    .prepare(
+      `SELECT s.id, s.plan_id as planId, s.started_at as startedAt, s.finished_at as finishedAt,
+      COALESCE(p.title, '训练') as title, COUNT(ws.id) as sets, COALESCE(SUM(ws.actual_weight * ws.actual_reps), 0) as volume
+     FROM workout_sessions s
+     LEFT JOIN workout_plans p ON p.id = s.plan_id
+     LEFT JOIN workout_sets ws ON ws.session_id = s.id
+     WHERE s.user_id = ? AND s.id = ?
+     GROUP BY s.id`,
+    )
+    .bind(defaultUserId, sessionId)
+    .first<Record<string, unknown>>()
+
+  if (!session) {
+    throw new Error("Workout session not found")
+  }
+
+  const setRows = await allRows(
+    db,
+    `SELECT ws.id, ws.exercise_id as exerciseId, COALESCE(e.name, '已删除动作') as exerciseName,
+      ws.set_index as setIndex, ws.actual_reps as actualReps, ws.actual_weight as actualWeight, ws.completed_at as completedAt
+     FROM workout_sets ws
+     LEFT JOIN workout_exercises e ON e.id = ws.exercise_id
+     WHERE ws.session_id = ?
+     ORDER BY ws.set_index ASC, ws.completed_at ASC`,
+    [sessionId],
+  )
+
+  return {
+    id: String(session.id),
+    planId: session.planId === null || session.planId === undefined ? null : String(session.planId),
+    date: formatMonthDay(toNumber(session.startedAt)),
+    title: String(session.title),
+    volume: `${Math.round(toNumber(session.volume)).toLocaleString("en-US")} kg`,
+    sets: setRows.map((set) => ({
+      id: String(set.id),
+      exerciseId: String(set.exerciseId),
+      exerciseName: String(set.exerciseName),
+      setIndex: toNumber(set.setIndex),
+      actualReps: toNumber(set.actualReps),
+      actualWeight: toNumber(set.actualWeight),
+      completedAt: toNumber(set.completedAt),
+    })),
+    startedAt: toNumber(session.startedAt),
+    finishedAt: nullableNumber(session.finishedAt),
+  }
+}
+
+async function updateWorkoutSession(db: D1Database, sessionId: string, input: WorkoutSessionInput) {
+  const session = await db
+    .prepare("SELECT id, started_at as startedAt, finished_at as finishedAt FROM workout_sessions WHERE id = ? AND user_id = ?")
+    .bind(sessionId, defaultUserId)
+    .first<Record<string, unknown>>()
+
+  if (!session) {
+    throw new Error("Workout session not found")
+  }
+
+  const dateKey = normalizeDateKey(input.date) ?? formatDateKey(toNumber(session.startedAt))
+  const startedAt = input.startedAt === undefined ? toNumber(session.startedAt) : timestampOnDate(dateKey, input.startedAt)
+  const finishedAt =
+    input.finishedAt === null
+      ? null
+      : timestampOnDate(dateKey, input.finishedAt ?? nullableNumber(session.finishedAt) ?? Date.now())
+  const sets = Array.isArray(input.sets) ? input.sets.filter((set) => set.exerciseId) : []
+
+  await db
+    .prepare("UPDATE workout_sessions SET started_at = ?, finished_at = ? WHERE id = ? AND user_id = ?")
+    .bind(startedAt, finishedAt, sessionId, defaultUserId)
+    .run()
+
+  await db.prepare("DELETE FROM workout_sets WHERE session_id = ?").bind(sessionId).run()
+
+  if (sets.length > 0) {
+    await db.batch(
+      sets.map((set, index) =>
+        db
+          .prepare(
+            "INSERT INTO workout_sets (id, session_id, exercise_id, set_index, actual_reps, actual_weight, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(
+            typeof set.id === "string" && set.id.trim() ? set.id.trim() : crypto.randomUUID(),
+            sessionId,
+            String(set.exerciseId),
+            set.setIndex ?? index + 1,
+            Math.max(0, Math.round(toNumber(set.actualReps, 0))),
+            Math.max(0, toNumber(set.actualWeight, 0)),
+            timestampOnDate(dateKey, set.completedAt ?? Date.now()),
+          ),
+      ),
+    )
+  }
+}
+
+async function deleteWorkoutSession(db: D1Database, sessionId: string) {
+  const session = await db
+    .prepare("SELECT id FROM workout_sessions WHERE id = ? AND user_id = ?")
+    .bind(sessionId, defaultUserId)
+    .first()
+
+  if (!session) {
+    throw new Error("Workout session not found")
+  }
+
+  await db.batch([
+    db.prepare("DELETE FROM workout_sets WHERE session_id = ?").bind(sessionId),
+    db.prepare("DELETE FROM workout_sessions WHERE id = ? AND user_id = ?").bind(sessionId, defaultUserId),
+  ])
 }
 
 async function saveReminders(db: D1Database, input: ReminderSettings) {
@@ -890,11 +1056,12 @@ async function getStats(db: D1Database, weekStart: number, todayStart: number) {
   )
   const setRows = await allRows(
     db,
-    `SELECT e.name, ws.actual_weight as weight, ws.completed_at as completedAt
+    `SELECT COALESCE(e.name, '已删除动作') as name, MAX(ws.actual_weight) as weight, MAX(ws.completed_at) as completedAt
      FROM workout_sets ws
-     JOIN workout_exercises e ON e.id = ws.exercise_id
      JOIN workout_sessions s ON s.id = ws.session_id
+     LEFT JOIN workout_exercises e ON e.id = ws.exercise_id
      WHERE s.user_id = ?
+     GROUP BY s.id, ws.exercise_id
      ORDER BY ws.completed_at ASC`,
     [defaultUserId],
   )

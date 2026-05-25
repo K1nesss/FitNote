@@ -15,7 +15,7 @@ export function ExerciseLibraryPage() {
   const { showToast } = useToast()
   const [query, setQuery] = useState("")
   const [adding, setAdding] = useState(false)
-  const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+  const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: "3", defaultReps: "10", defaultWeight: "0" })
   const exercises = useMemo(() => {
     const keyword = query.trim()
     const library = data?.exerciseLibrary ?? []
@@ -36,8 +36,14 @@ export function ExerciseLibraryPage() {
       return
     }
 
-    await createExercise(draft)
-    setDraft({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+    await createExercise({
+      name: draft.name,
+      muscleGroup: draft.muscleGroup,
+      defaultSets: toInteger(draft.defaultSets, 1),
+      defaultReps: toInteger(draft.defaultReps, 1),
+      defaultWeight: toDecimal(draft.defaultWeight, 0),
+    })
+    setDraft({ name: "", muscleGroup: "", defaultSets: "3", defaultReps: "10", defaultWeight: "0" })
     setAdding(false)
     showToast({ title: "已添加" })
   }
@@ -63,7 +69,7 @@ export function ExerciseLibraryPage() {
               <div>
                 <p className="font-medium">{exercise.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {exercise.defaultSets} x {exercise.defaultReps} · {exercise.defaultWeight} kg
+                  {exercise.defaultSets} 组 · {exercise.defaultReps} 次 · {exercise.defaultWeight} kg
                 </p>
               </div>
               <Badge>{exercise.muscleGroup}</Badge>
@@ -74,35 +80,50 @@ export function ExerciseLibraryPage() {
       </Card>
 
       <Dialog open={adding} title="新增动作" onClose={() => setAdding(false)}>
-        <Input
-          placeholder="动作名称"
-          value={draft.name}
-          onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-        />
-        <Input
-          placeholder="肌群"
-          value={draft.muscleGroup}
-          onChange={(event) => setDraft((current) => ({ ...current, muscleGroup: event.target.value }))}
-        />
+        <label className="space-y-1">
+          <span className="text-xs text-muted-foreground">动作</span>
+          <Input
+            placeholder="动作名称"
+            value={draft.name}
+            onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-muted-foreground">肌群</span>
+          <Input
+            placeholder="肌群"
+            value={draft.muscleGroup}
+            onChange={(event) => setDraft((current) => ({ ...current, muscleGroup: event.target.value }))}
+          />
+        </label>
         <div className="grid grid-cols-3 gap-2">
-          <Input
-            placeholder="组"
-            inputMode="numeric"
-            value={draft.defaultSets}
-            onChange={(event) => setDraft((current) => ({ ...current, defaultSets: Number(event.target.value) || 0 }))}
-          />
-          <Input
-            placeholder="次"
-            inputMode="numeric"
-            value={draft.defaultReps}
-            onChange={(event) => setDraft((current) => ({ ...current, defaultReps: Number(event.target.value) || 0 }))}
-          />
-          <Input
-            placeholder="kg"
-            inputMode="decimal"
-            value={draft.defaultWeight}
-            onChange={(event) => setDraft((current) => ({ ...current, defaultWeight: Number(event.target.value) || 0 }))}
-          />
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">组</span>
+            <Input
+              placeholder="3"
+              inputMode="numeric"
+              value={draft.defaultSets}
+              onChange={(event) => setDraft((current) => ({ ...current, defaultSets: event.target.value }))}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">次</span>
+            <Input
+              placeholder="10"
+              inputMode="numeric"
+              value={draft.defaultReps}
+              onChange={(event) => setDraft((current) => ({ ...current, defaultReps: event.target.value }))}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">kg</span>
+            <Input
+              placeholder="0"
+              inputMode="decimal"
+              value={draft.defaultWeight}
+              onChange={(event) => setDraft((current) => ({ ...current, defaultWeight: event.target.value }))}
+            />
+          </label>
         </div>
         <Button className="w-full rounded-3xl" onClick={addExercise}>
           <Plus className="h-4 w-4" />
@@ -111,4 +132,14 @@ export function ExerciseLibraryPage() {
       </Dialog>
     </div>
   )
+}
+
+function toInteger(value: string, fallback: number) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : fallback
+}
+
+function toDecimal(value: string, fallback: number) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed * 10) / 10) : fallback
 }

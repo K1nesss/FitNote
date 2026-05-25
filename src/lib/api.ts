@@ -64,6 +64,21 @@ export type WorkoutHistoryItem = {
   finishedAt: number | null
 }
 
+export type WorkoutSetRecord = {
+  id: string
+  exerciseId: string
+  exerciseName: string
+  setIndex: number
+  actualReps: number
+  actualWeight: number
+  completedAt: number
+}
+
+export type WorkoutSessionDetail = Omit<WorkoutHistoryItem, "sets"> & {
+  planId: string | null
+  sets: WorkoutSetRecord[]
+}
+
 export type FoodTrendItem = Macro & {
   day: string
 }
@@ -129,7 +144,7 @@ export type ExercisePayload = {
 
 export type PlanPayload = {
   title: string
-  exercises: Array<ExercisePayload & { libraryExerciseId?: string | null }>
+  exercises: Array<ExercisePayload & { id?: string; libraryExerciseId?: string | null }>
 }
 
 export type MealPayload = Macro & {
@@ -155,6 +170,21 @@ export type WorkoutSessionPayload = {
     setIndex: number
     actualReps: number
     actualWeight: number
+    completedAt?: number
+  }>
+}
+
+export type WorkoutSessionUpdatePayload = {
+  date?: string
+  startedAt?: number
+  finishedAt?: number | null
+  sets: Array<{
+    id?: string
+    exerciseId: string
+    setIndex: number
+    actualReps: number
+    actualWeight: number
+    completedAt?: number
   }>
 }
 
@@ -192,6 +222,18 @@ export async function deleteMeal(id: string) {
 
 export async function saveWorkoutSession(payload: WorkoutSessionPayload) {
   return request<BootstrapData>("/api/workout-sessions", { method: "POST", body: payload })
+}
+
+export async function getWorkoutSession(id: string) {
+  return request<WorkoutSessionDetail>(`/api/workout-sessions/${encodeURIComponent(id)}`)
+}
+
+export async function updateWorkoutSession(id: string, payload: WorkoutSessionUpdatePayload) {
+  return request<BootstrapData>(`/api/workout-sessions/${encodeURIComponent(id)}`, { method: "PUT", body: payload })
+}
+
+export async function deleteWorkoutSession(id: string) {
+  return request<BootstrapData>(`/api/workout-sessions/${encodeURIComponent(id)}`, { method: "DELETE" })
 }
 
 export async function saveReminders(payload: ReminderSettings) {

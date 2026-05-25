@@ -17,9 +17,9 @@ type ExerciseDraft = {
   libraryExerciseId: string | null
   name: string
   muscleGroup: string
-  defaultSets: number
-  defaultReps: number
-  defaultWeight: number
+  defaultSets: string
+  defaultReps: string
+  defaultWeight: string
 }
 
 const weekdays = [1, 2, 3, 4, 5, 6, 7]
@@ -34,7 +34,7 @@ export function WorkoutPlanPage() {
   const [customOpen, setCustomOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [editing, setEditing] = useState<ExerciseDraft | null>(null)
-  const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+  const [draft, setDraft] = useState({ name: "", muscleGroup: "", defaultSets: "3", defaultReps: "10", defaultWeight: "0" })
   const saveSubmit = useSubmitLock()
   const createSubmit = useSubmitLock()
   const canSave = exercises.length > 0
@@ -73,9 +73,9 @@ export function WorkoutPlanPage() {
 
     await createSubmit.run(async () => {
       const next = { ...draft, id: crypto.randomUUID(), libraryExerciseId: null }
-      await createExercise(draft)
+      await createExercise(toExercisePayload(draft))
       setExercises((current) => [...current, next])
-      setDraft({ name: "", muscleGroup: "", defaultSets: 3, defaultReps: 10, defaultWeight: 0 })
+      setDraft({ name: "", muscleGroup: "", defaultSets: "3", defaultReps: "10", defaultWeight: "0" })
       setCustomOpen(false)
       showToast({ title: "已添加" })
     })
@@ -88,7 +88,7 @@ export function WorkoutPlanPage() {
     }
 
     await saveSubmit.run(async () => {
-      await savePlan(selectedDay, { title, exercises })
+      await savePlan(selectedDay, { title, exercises: exercises.map(toExercisePayload) })
       showToast({ title: "已保存" })
     })
   }
@@ -206,7 +206,8 @@ export function WorkoutPlanPage() {
               <div className="min-w-0">
                 <p className="truncate font-medium">{exercise.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {exercise.muscleGroup} · {exercise.defaultSets} x {exercise.defaultReps} · {exercise.defaultWeight} kg · {index + 1}
+                  {exercise.muscleGroup} · {toInteger(exercise.defaultSets, 1)} 组 ·{" "}
+                  {toInteger(exercise.defaultReps, 1)} 次 · {toDecimal(exercise.defaultWeight, 0)} kg · {index + 1}
                 </p>
               </div>
               <button
@@ -286,34 +287,71 @@ function ExerciseInputs<T extends Omit<ExerciseDraft, "id" | "libraryExerciseId"
 }) {
   return (
     <>
-      <Input value={draft.name} placeholder="动作名称" onChange={(event) => onChange({ ...draft, name: event.target.value })} />
-      <Input
-        value={draft.muscleGroup}
-        placeholder="肌群"
-        onChange={(event) => onChange({ ...draft, muscleGroup: event.target.value })}
-      />
+      <label className="space-y-1">
+        <span className="text-xs text-muted-foreground">动作</span>
+        <Input value={draft.name} placeholder="动作名称" onChange={(event) => onChange({ ...draft, name: event.target.value })} />
+      </label>
+      <label className="space-y-1">
+        <span className="text-xs text-muted-foreground">肌群</span>
+        <Input
+          value={draft.muscleGroup}
+          placeholder="肌群"
+          onChange={(event) => onChange({ ...draft, muscleGroup: event.target.value })}
+        />
+      </label>
       <div className="grid grid-cols-3 gap-2">
-        <Input
-          inputMode="numeric"
-          value={draft.defaultSets}
-          placeholder="组"
-          onChange={(event) => onChange({ ...draft, defaultSets: Number(event.target.value) || 0 })}
-        />
-        <Input
-          inputMode="numeric"
-          value={draft.defaultReps}
-          placeholder="次"
-          onChange={(event) => onChange({ ...draft, defaultReps: Number(event.target.value) || 0 })}
-        />
-        <Input
-          inputMode="decimal"
-          value={draft.defaultWeight}
-          placeholder="kg"
-          onChange={(event) => onChange({ ...draft, defaultWeight: Number(event.target.value) || 0 })}
-        />
+        <label className="space-y-1">
+          <span className="text-xs text-muted-foreground">组</span>
+          <Input
+            inputMode="numeric"
+            value={draft.defaultSets}
+            placeholder="3"
+            onChange={(event) => onChange({ ...draft, defaultSets: event.target.value })}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-muted-foreground">次</span>
+          <Input
+            inputMode="numeric"
+            value={draft.defaultReps}
+            placeholder="10"
+            onChange={(event) => onChange({ ...draft, defaultReps: event.target.value })}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-muted-foreground">kg</span>
+          <Input
+            inputMode="decimal"
+            value={draft.defaultWeight}
+            placeholder="0"
+            onChange={(event) => onChange({ ...draft, defaultWeight: event.target.value })}
+          />
+        </label>
       </div>
     </>
   )
+}
+
+function toExercisePayload(exercise: Omit<ExerciseDraft, "id" | "libraryExerciseId"> & Partial<Pick<ExerciseDraft, "id" | "libraryExerciseId">>) {
+  return {
+    id: exercise.id,
+    libraryExerciseId: exercise.libraryExerciseId,
+    name: exercise.name,
+    muscleGroup: exercise.muscleGroup,
+    defaultSets: toInteger(exercise.defaultSets, 1),
+    defaultReps: toInteger(exercise.defaultReps, 1),
+    defaultWeight: toDecimal(exercise.defaultWeight, 0),
+  }
+}
+
+function toInteger(value: string, fallback: number) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : fallback
+}
+
+function toDecimal(value: string, fallback: number) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed * 10) / 10) : fallback
 }
 
 function fromPlanExercise(exercise: PlanExercise): ExerciseDraft {
@@ -322,9 +360,9 @@ function fromPlanExercise(exercise: PlanExercise): ExerciseDraft {
     libraryExerciseId: exercise.libraryExerciseId,
     name: exercise.name,
     muscleGroup: exercise.muscle,
-    defaultSets: exercise.sets,
-    defaultReps: exercise.reps,
-    defaultWeight: exercise.weight,
+    defaultSets: String(exercise.sets),
+    defaultReps: String(exercise.reps),
+    defaultWeight: String(exercise.weight),
   }
 }
 
@@ -334,8 +372,8 @@ function fromLibraryExercise(exercise: LibraryExercise): ExerciseDraft {
     libraryExerciseId: exercise.id,
     name: exercise.name,
     muscleGroup: exercise.muscleGroup,
-    defaultSets: exercise.defaultSets,
-    defaultReps: exercise.defaultReps,
-    defaultWeight: exercise.defaultWeight,
+    defaultSets: String(exercise.defaultSets),
+    defaultReps: String(exercise.defaultReps),
+    defaultWeight: String(exercise.defaultWeight),
   }
 }
