@@ -11,8 +11,11 @@
     "worker:dev": "wrangler dev --config wrangler.test.toml",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "npm run db:migrate:local",
-    "db:migrate:local": "wrangler d1 migrations apply fitnote --local --config wrangler.test.toml",
-    "db:migrate:remote": "wrangler d1 migrations apply fitnote --remote --config wrangler.toml"
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.test.toml",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.toml",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc -b",
+    "backup:remote": "wrangler d1 export DB --remote --output fitnote-backup.sql --config wrangler.toml"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.1",

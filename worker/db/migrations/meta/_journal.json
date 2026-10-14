@@ -29,6 +29,27 @@
       "when": 1779525778387,
       "tag": "0003_bitter_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791016954521,
+      "tag": "0004_durable_storage",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791114360917,
+      "tag": "0005_progress_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791117155783,
+      "tag": "0006_warmup_rpe",
+      "breakpoints": true
     }
   ]
 }

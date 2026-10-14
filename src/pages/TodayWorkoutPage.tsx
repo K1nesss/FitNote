@@ -1,61 +1,146 @@
-import { CalendarDays, Check, Clock3, Dumbbell, History, Trash2 } from "lucide-react"
-import type { ComponentProps } from "react"
+import { BookOpen, CalendarRange, ChevronLeft, ChevronRight, Dumbbell, History, Play, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { InputWithSuffix, SectionHeader } from "@/components/ui/controls"
 import { DateStrip } from "@/components/ui/date-strip"
-import { Dialog } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { LoadingState } from "@/components/ui/state"
-import { useAppData, weekdayText } from "@/lib/app-data"
+import { ConfirmDialog, Dialog } from "@/components/ui/dialog"
+import { EmptyState } from "@/components/ui/state"
+import { useToast } from "@/components/ui/toast"
+import { readActiveWorkout } from "@/lib/active-workout"
 import type { WorkoutSessionDetail, WorkoutSetRecord } from "@/lib/api"
-import { getWorkoutSession } from "@/lib/api"
+import { getWorkoutSession, slotLabel } from "@/lib/api"
+import { errorMessage, useAppData, weekdayText } from "@/lib/app-data"
+import { relativeDateLabel } from "@/lib/date"
+import { describeSet } from "@/lib/exercise-kind"
+import { formatNumber, formatWeight, parseDecimal, parseInteger } from "@/lib/format"
 import { useDayData } from "@/lib/use-day-data"
 import { useSelectedDateParam } from "@/lib/use-selected-date"
 import { useSubmitLock } from "@/lib/use-submit-lock"
 
 export function TodayWorkoutPage() {
   const { selectedDate, setSelectedDate } = useSelectedDateParam()
-  const { refresh: refreshApp, updateWorkoutSession, deleteWorkoutSession } = useAppData()
-  const { dayData, loading, refresh } = useDayData(selectedDate)
-
-  if (loading || !dayData) {
-    return <LoadingState title="训练" />
-  }
-
-  const todayPlan = dayData.plan
-  const sessionPath = `/workout/session?date=${selectedDate}`
-  const totalSets = todayPlan?.exercises.reduce((sum, exercise) => sum + exercise.sets, 0) ?? 0
+  const { data, refresh: refreshApp, updateWorkoutSession, deleteWorkoutSession } = useAppData()
+  const rotation = data?.settings.planMode === "rotation"
+  const { dayData, showSkeleton, error, refresh } = useDayData(selectedDate)
+  const [activeWorkout] = useState(readActiveWorkout)
 
   async function refreshRecords() {
     await Promise.all([refresh(), refreshApp()])
   }
 
-  if (!todayPlan || todayPlan.exercises.length === 0) {
-    return (
-      <div className="space-y-5">
-        <DateStrip value={selectedDate} onChange={setSelectedDate} />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-3xl">训练</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex min-h-24 items-center rounded-[28px] bg-muted/35 px-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-white/46 text-muted-foreground">
-                  <Dumbbell className="h-6 w-6" />
-                </div>
-                <p className="font-medium text-muted-foreground">未设置</p>
+  const plan = dayData?.plan
+  const totalSets = plan?.exercises.reduce((sum, exercise) => sum + exercise.sets, 0) ?? 0
+  const sessionPath = `/workout/session?date=${selectedDate}`
+
+  return (
+    <div className="space-y-5">
+      <DateStrip value={selectedDate} onChange={setSelectedDate} />
+
+      {activeWorkout ? (
+        <Link
+          to={`/workout/session?date=${activeWorkout.date}`}
+          className="pressable flex items-center gap-3 rounded-[1.75rem] bg-primary p-4 text-primary-foreground shadow-[0_12px_28px_rgba(23,105,166,0.22)]"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+            <Play className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">继续未完成的训练</span>
+            <span className="block text-sm opacity-85">
+              {activeWorkout.planTitle} · 已完成 {activeWorkout.sets.length} 组
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5" />
+        </Link>
+      ) : null}
+
+      {showSkeleton ? <div className="skeleton h-48 rounded-[2rem]" /> : null}
+      {error && !dayData ? (
+        <EmptyState icon={Dumbbell} title="加载失败" description={error} action={<Button onClick={() => void refresh()}>重试</Button>} />
+      ) : null}
+
+      {dayData ? (
+        plan && plan.exercises.length > 0 ? (
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {relativeDateLabel(selectedDate)} · {plan.weekday > 100 ? `循环 · ${slotLabel(plan.weekday)}` : weekdayText(plan.weekday)}
+                </p>
+                <h2 className="mt-0.5 text-2xl font-bold">{plan.title}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {plan.exercises.length} 个动作 · {totalSets} 组
+                </p>
               </div>
-            </div>
-            <Button asChild size="lg" className="w-full rounded-3xl">
-              <Link to="/workout/plan">计划</Link>
-            </Button>
-          </CardContent>
-        </Card>
+              <ol className="divide-y divide-[var(--surface-border)] rounded-[1.4rem] bg-muted/35">
+                {plan.exercises.map((exercise, index) => (
+                  <li key={exercise.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="w-5 shrink-0 text-center text-sm font-semibold text-muted-foreground tabular-nums">{index + 1}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{exercise.name}</span>
+                        <span className="block text-xs text-muted-foreground">{exercise.muscle}</span>
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                      {exercise.sets}×{exercise.reps} · {formatWeight(exercise.weight)}kg
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              {activeWorkout?.date !== selectedDate ? (
+                <Button asChild size="lg" className="w-full">
+                  <Link to={sessionPath}>
+                    <Play className="h-5 w-5" />
+                    开始训练
+                  </Link>
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : (
+          <EmptyState
+            icon={CalendarRange}
+            title={rotation ? `${relativeDateLabel(selectedDate)}没有循环训练` : `${relativeDateLabel(selectedDate)}是休息日`}
+            description={
+              rotation
+                ? "循环模式下，今天和以后会显示下一个训练日。也可以直接开始一次自由训练。"
+                : "可以直接开始一次自由训练，或在训练计划里为这一天安排动作。"
+            }
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild>
+                  <Link to={sessionPath}>
+                    <Play className="h-4 w-4" />
+                    自由训练
+                  </Link>
+                </Button>
+                <Button asChild variant="secondary">
+                  <Link to="/workout/plan">安排计划</Link>
+                </Button>
+              </div>
+            }
+          />
+        )
+      ) : null}
+
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { to: "/workout/plan", label: "训练计划", icon: CalendarRange },
+          { to: "/workout/history", label: "历史", icon: History },
+          { to: "/workout/library", label: "动作库", icon: BookOpen },
+        ].map((item) => (
+          <Link key={item.to} to={item.to} className="pressable flex flex-col items-center gap-1.5 rounded-[1.5rem] bg-muted/45 py-3.5 text-sm font-medium">
+            <item.icon className="h-5 w-5 text-primary" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
+
+      {dayData ? (
         <WorkoutRecords
           sessions={dayData.workoutSessions}
           selectedDate={selectedDate}
@@ -63,96 +148,12 @@ export function TodayWorkoutPage() {
           onUpdate={updateWorkoutSession}
           onDelete={deleteWorkoutSession}
         />
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-5">
-      <DateStrip value={selectedDate} onChange={setSelectedDate} />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-3xl">{todayPlan.title}</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">{weekdayText(todayPlan.weekday)}</p>
-            </div>
-            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-accent/72 text-accent-foreground">
-              <CalendarDays className="h-7 w-7" />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Badge>
-              <Clock3 className="mr-1 h-3.5 w-3.5" />
-              {todayPlan.exercises.length} 个
-            </Badge>
-            <Badge>
-              <Dumbbell className="mr-1 h-3.5 w-3.5" />
-              {totalSets} 组
-            </Badge>
-          </div>
-          <Button asChild size="lg" className="w-full rounded-3xl">
-            <Link to={sessionPath}>
-              <Dumbbell className="h-5 w-5" />
-              开始
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">动作</h2>
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/workout/history" aria-label="历史">
-            <History className="h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {todayPlan.exercises.map((exercise) => (
-          <Card key={exercise.id}>
-            <CardContent className="flex items-center justify-between gap-4 p-4">
-              <div className="flex min-w-0 items-center gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted font-semibold">
-                  {exercise.order}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{exercise.name}</p>
-                  <p className="text-sm text-muted-foreground">{exercise.muscle}</p>
-                </div>
-              </div>
-              <div className="text-right text-sm">
-                <p className="font-medium">
-                  {exercise.sets}
-                  <span className="ml-1 text-xs font-medium text-muted-foreground">组</span>
-                </p>
-                <p className="text-muted-foreground">
-                  {exercise.reps} 次 · {exercise.weight} kg
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Button asChild variant="quiet" className="w-full">
-        <Link to="/workout/plan">计划</Link>
-      </Button>
-
-      <WorkoutRecords
-        sessions={dayData.workoutSessions}
-        selectedDate={selectedDate}
-        onChanged={refreshRecords}
-        onUpdate={updateWorkoutSession}
-        onDelete={deleteWorkoutSession}
-      />
+      ) : null}
     </div>
   )
 }
+
+type Sessions = NonNullable<ReturnType<typeof useDayData>["dayData"]>["workoutSessions"]
 
 function WorkoutRecords({
   sessions,
@@ -161,16 +162,18 @@ function WorkoutRecords({
   onUpdate,
   onDelete,
 }: {
-  sessions: NonNullable<ReturnType<typeof useDayData>["dayData"]>["workoutSessions"]
+  sessions: Sessions
   selectedDate: string
   onChanged: () => Promise<void>
   onUpdate: ReturnType<typeof useAppData>["updateWorkoutSession"]
   onDelete: ReturnType<typeof useAppData>["deleteWorkoutSession"]
 }) {
+  const { showToast } = useToast()
+  const [open, setOpen] = useState(false)
   const [detail, setDetail] = useState<WorkoutSessionDetail | null>(null)
   const [sets, setSets] = useState<WorkoutSetDraft[]>([])
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
-  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const saveSubmit = useSubmitLock()
   const deleteSubmit = useSubmitLock()
   const exerciseGroups = groupWorkoutSets(sets)
@@ -182,26 +185,25 @@ function WorkoutRecords({
   }, [detail])
 
   async function openSession(id: string) {
-    setLoadingDetail(true)
+    setOpen(true)
+    setDetail(null)
 
     try {
       setDetail(await getWorkoutSession(id))
-    } finally {
-      setLoadingDetail(false)
+    } catch (caught) {
+      setOpen(false)
+      showToast({ title: "无法打开记录", description: errorMessage(caught), tone: "error" })
     }
+  }
+
+  function close() {
+    setOpen(false)
+    setDetail(null)
+    setActiveExerciseId(null)
   }
 
   function updateSet(id: string, patch: Partial<WorkoutSetDraft>) {
     setSets((current) => current.map((set) => (set.id === id ? { ...set, ...patch } : set)))
-  }
-
-  function deleteSet(id: string) {
-    setSets((current) => current.filter((set) => set.id !== id))
-  }
-
-  function deleteExerciseRecord(exerciseId: string) {
-    setSets((current) => current.filter((set) => set.exerciseId !== exerciseId))
-    setActiveExerciseId((current) => (current === exerciseId ? null : current))
   }
 
   async function saveSession() {
@@ -218,13 +220,18 @@ function WorkoutRecords({
           id: set.id,
           exerciseId: set.exerciseId,
           setIndex: index + 1,
-          actualReps: toInteger(set.actualReps, 0),
-          actualWeight: toDecimal(set.actualWeight, 0),
+          actualReps: parseInteger(set.actualReps, 0),
+          actualWeight: parseDecimal(set.actualWeight, 0),
           completedAt: set.completedAt,
+          durationSec: set.durationSec,
+          distanceM: set.distanceM,
+          isWarmup: Boolean(set.isWarmup),
+          rpe: set.rpe ?? null,
         })),
       })
-      setDetail(null)
+      close()
       await onChanged()
+      showToast({ title: "已保存" })
     })
   }
 
@@ -235,145 +242,158 @@ function WorkoutRecords({
 
     await deleteSubmit.run(async () => {
       await onDelete(detail.id)
-      setDetail(null)
+      setConfirmDelete(false)
+      close()
       await onChanged()
-    })
+      showToast({ title: "已删除" })
+    }, "删除失败")
   }
 
+  const workingSets = sets.filter((set) => !set.isWarmup)
+  const totalVolume = workingSets.reduce(
+    (sum, set) => sum + (set.kind && set.kind !== "strength" ? 0 : parseDecimal(set.actualWeight, 0) * parseInteger(set.actualReps, 0)),
+    0,
+  )
+
   return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold">记录</h2>
+    <section className="space-y-2">
+      <SectionHeader title="当天记录" />
       {sessions.map((session) => (
-        <Card key={session.id}>
-          <CardContent
-            className="flex items-center justify-between gap-4 p-4 transition active:scale-[0.99]"
-            role="button"
-            tabIndex={0}
-            onClick={() => void openSession(session.id)}
-          >
+        <Card key={session.id} role="button" tabIndex={0} onClick={() => void openSession(session.id)} onKeyDown={(event) => event.key === "Enter" && void openSession(session.id)}>
+          <CardContent className="flex items-center justify-between gap-4 p-4">
             <div>
-              <p className="font-medium">{session.title}</p>
-              <p className="text-sm text-muted-foreground">{session.date}</p>
+              <p className="font-semibold">{session.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {session.date}
+                {session.finishedAt ? ` · ${Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60000))} 分钟` : ""}
+              </p>
             </div>
-            <div className="text-right text-sm">
-              <p>{session.volume}</p>
+            <div className="text-right text-sm tabular-nums">
+              <p className="font-semibold">{session.volume}</p>
               <p className="text-muted-foreground">{session.sets} 组</p>
             </div>
           </CardContent>
         </Card>
       ))}
-      {sessions.length === 0 ? (
-        <div className="rounded-[28px] bg-muted/35 p-5 text-sm font-medium text-muted-foreground">暂无</div>
-      ) : null}
+      {sessions.length === 0 ? <EmptyState icon={History} title="这一天还没有训练记录" /> : null}
+
       <Dialog
-        open={Boolean(detail) || loadingDetail}
-        title="训练记录"
-        onClose={() => {
-          setDetail(null)
-          setActiveExerciseId(null)
-        }}
+        open={open}
+        title={activeGroup ? activeGroup.exerciseName : "训练记录"}
+        description={detail && !activeGroup ? `${detail.date} · ${detail.title}` : undefined}
+        onClose={close}
+        footer={
+          detail ? (
+            activeGroup ? (
+              <Button className="w-full" variant="secondary" onClick={() => setActiveExerciseId(null)}>
+                <ChevronLeft className="h-4 w-4" />
+                返回全部动作
+              </Button>
+            ) : (
+              <div className="grid grid-cols-[auto_1fr] gap-3">
+                <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)} disabled={deleteSubmit.pending}>
+                  <Trash2 className="h-4 w-4" />
+                  删除
+                </Button>
+                <Button onClick={saveSession} disabled={saveSubmit.pending}>
+                  {saveSubmit.pending ? "保存中…" : "保存修改"}
+                </Button>
+              </div>
+            )
+          ) : null
+        }
       >
-        {loadingDetail && !detail ? <p className="rounded-3xl bg-muted/60 p-4 text-sm text-muted-foreground">加载中</p> : null}
+        {!detail ? <div className="skeleton h-32 rounded-3xl" /> : null}
         {detail && !activeGroup ? (
           <>
-            <div className="grid grid-cols-3 gap-3">
-              <MetricCard label="动作" value={exerciseGroups.length} unit="个" />
-              <MetricCard label="日期" value={detail.date} />
-              <MetricCard label="组数" value={sets.length} unit="组" />
-            </div>
-            <div className="space-y-3">
-              {exerciseGroups.map((group) => (
-                <div key={group.exerciseId} className="grid grid-cols-[1fr_auto] items-center gap-2">
-                  <button
-                    type="button"
-                    className="flex min-h-20 items-center justify-between gap-3 rounded-[28px] bg-muted/55 p-4 text-left transition active:scale-[0.99]"
-                    onClick={() => setActiveExerciseId(group.exerciseId)}
-                  >
-                    <span>
-                      <span className="block font-medium">{group.exerciseName}</span>
-                      <span className="block text-sm text-muted-foreground">
-                        {group.sets.length} 组 · {Math.round(group.volume).toLocaleString("en-US")} kg
-                      </span>
-                    </span>
-                    <span className="text-sm font-medium text-muted-foreground">{formatWeight(group.bestWeight)} kg</span>
-                  </button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="删除动作记录"
-                    onClick={() => deleteExerciseRecord(group.exerciseId)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                ["动作", `${exerciseGroups.length}`],
+                ["组数", `${workingSets.length}`],
+                ["容量", `${formatNumber(totalVolume, 0)}kg`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl bg-muted/45 py-2.5">
+                  <p className="text-[11px] text-muted-foreground">{label}</p>
+                  <p className="mt-0.5 font-semibold tabular-nums">{value}</p>
                 </div>
               ))}
-              {exerciseGroups.length === 0 ? (
-                <div className="rounded-3xl bg-muted/55 p-4 text-sm text-muted-foreground">无动作</div>
-              ) : null}
             </div>
-            <MetricCard
-              label="容量"
-              value={Math.round(
-                sets.reduce((sum, set) => sum + toDecimal(set.actualWeight, 0) * toInteger(set.actualReps, 0), 0),
-              )}
-              unit="kg"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="ghost" className="rounded-3xl" onClick={removeSession} disabled={deleteSubmit.pending}>
-                <Trash2 className="h-4 w-4" />
-                删除
-              </Button>
-              <Button className="rounded-3xl" onClick={saveSession} disabled={saveSubmit.pending}>
-                <Check className="h-4 w-4" />
-                保存
-              </Button>
+            <div className="space-y-2">
+              {exerciseGroups.map((group) => (
+                <button
+                  key={group.exerciseId}
+                  type="button"
+                  className="pressable flex w-full items-center justify-between gap-3 rounded-[1.4rem] bg-muted/45 p-4 text-left"
+                  onClick={() => setActiveExerciseId(group.exerciseId)}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{group.exerciseName}</span>
+                    <span className="block text-sm text-muted-foreground tabular-nums">
+                      {group.sets.filter((set) => !set.isWarmup).length} 组
+                      {group.sets.some((set) => set.isWarmup) ? ` + ${group.sets.filter((set) => set.isWarmup).length} 热身` : ""}
+                      {group.bestWeight > 0 ? ` · 最高 ${formatWeight(group.bestWeight)} kg` : ""}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              ))}
+              {exerciseGroups.length === 0 ? <p className="rounded-2xl bg-muted/45 p-4 text-sm text-muted-foreground">没有组数据</p> : null}
             </div>
           </>
         ) : null}
         {detail && activeGroup ? (
-          <>
-            <Button variant="ghost" className="w-fit rounded-3xl" onClick={() => setActiveExerciseId(null)}>
-              返回
-            </Button>
-            <div className="rounded-[28px] bg-muted/55 p-4">
-              <p className="font-medium">{activeGroup.exerciseName}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {activeGroup.sets.length} 组 · {Math.round(activeGroup.volume).toLocaleString("en-US")} kg
-              </p>
-            </div>
-            <div className="space-y-3">
-              {activeGroup.sets.map((set, index) => (
-                <div key={set.id} className="rounded-[28px] bg-muted/55 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="font-medium">第 {index + 1} 组</p>
-                    <Button size="icon" variant="ghost" aria-label="删除组" onClick={() => deleteSet(set.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <InputWithSuffix
-                      suffix="kg"
-                      inputMode="decimal"
-                      value={set.actualWeight}
-                      onChange={(event) => updateSet(set.id, { actualWeight: event.target.value })}
-                    />
-                    <InputWithSuffix
-                      suffix="次"
-                      inputMode="numeric"
-                      value={set.actualReps}
-                      onChange={(event) => updateSet(set.id, { actualReps: event.target.value })}
-                    />
-                  </div>
+          <div className="space-y-2">
+            {activeGroup.sets.map((set, index) =>
+              set.kind && set.kind !== "strength" ? (
+                <div key={set.id} className="grid grid-cols-[3rem_1fr_2.75rem] items-center gap-2">
+                  <SetLabel set={set} index={index} sets={activeGroup.sets} />
+                  <span className="text-sm font-medium tabular-nums">
+                    {describeSet(set.kind, { weight: parseDecimal(set.actualWeight), reps: parseInteger(set.actualReps), durationSec: set.durationSec, distanceM: set.distanceM })}
+                  </span>
+                  <Button size="icon" variant="ghost" aria-label={`删除第 ${index + 1} 组`} onClick={() => setSets((current) => current.filter((item) => item.id !== set.id))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-            <Button className="w-full rounded-3xl" onClick={saveSession} disabled={saveSubmit.pending}>
-              <Check className="h-4 w-4" />
-              保存
-            </Button>
-          </>
+              ) : (
+              <div key={set.id} className="grid grid-cols-[3rem_1fr_1fr_2.75rem] items-center gap-2">
+                <SetLabel set={set} index={index} sets={activeGroup.sets} onToggleWarmup={() => updateSet(set.id, { isWarmup: !set.isWarmup })} />
+                <InputWithSuffix
+                  suffix="kg"
+                  inputMode="decimal"
+                  className="h-11"
+                  value={set.actualWeight}
+                  onChange={(event) => updateSet(set.id, { actualWeight: event.target.value })}
+                  aria-label={`第 ${index + 1} 组重量`}
+                />
+                <InputWithSuffix
+                  suffix="次"
+                  inputMode="numeric"
+                  className="h-11"
+                  value={set.actualReps}
+                  onChange={(event) => updateSet(set.id, { actualReps: event.target.value })}
+                  aria-label={`第 ${index + 1} 组次数`}
+                />
+                <Button size="icon" variant="ghost" aria-label={`删除第 ${index + 1} 组`} onClick={() => setSets((current) => current.filter((item) => item.id !== set.id))}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              ),
+            )}
+            <p className="px-1 pt-1 text-xs text-muted-foreground">点组号可切换热身组。修改后返回，点击「保存修改」生效。</p>
+          </div>
         ) : null}
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="删除这次训练？"
+        description="这次训练的所有组都会被删除，无法恢复。"
+        confirmLabel="删除"
+        destructive
+        pending={deleteSubmit.pending}
+        onConfirm={removeSession}
+        onClose={() => setConfirmDelete(false)}
+      />
     </section>
   )
 }
@@ -384,71 +404,35 @@ type WorkoutSetDraft = Omit<WorkoutSetRecord, "actualReps" | "actualWeight"> & {
 }
 
 function toSetDraft(set: WorkoutSetRecord): WorkoutSetDraft {
-  return {
-    ...set,
-    actualReps: String(set.actualReps),
-    actualWeight: String(set.actualWeight),
-  }
-}
-
-function MetricCard({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
-  return (
-    <div className="rounded-3xl bg-muted/60 p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-2 text-xl font-semibold">
-        {value}
-        {unit ? <span className="ml-1 text-sm font-medium text-muted-foreground">{unit}</span> : null}
-      </p>
-    </div>
-  )
-}
-
-function InputWithSuffix({ suffix, className, ...props }: ComponentProps<typeof Input> & { suffix: string }) {
-  return (
-    <div className="relative">
-      <Input className={`pr-12 ${className ?? ""}`} {...props} />
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-        {suffix}
-      </span>
-    </div>
-  )
+  return { ...set, actualReps: String(set.actualReps), actualWeight: String(set.actualWeight) }
 }
 
 function groupWorkoutSets(sets: WorkoutSetDraft[]) {
-  const map = new Map<
-    string,
-    { exerciseId: string; exerciseName: string; sets: WorkoutSetDraft[]; volume: number; bestWeight: number }
-  >()
+  const map = new Map<string, { exerciseId: string; exerciseName: string; sets: WorkoutSetDraft[]; bestWeight: number }>()
 
   for (const set of sets) {
-    const group = map.get(set.exerciseId) ?? {
-      exerciseId: set.exerciseId,
-      exerciseName: set.exerciseName,
-      sets: [],
-      volume: 0,
-      bestWeight: 0,
-    }
-    const weight = toDecimal(set.actualWeight, 0)
+    const group = map.get(set.exerciseId) ?? { exerciseId: set.exerciseId, exerciseName: set.exerciseName, sets: [], bestWeight: 0 }
     group.sets.push(set)
-    group.volume += weight * toInteger(set.actualReps, 0)
-    group.bestWeight = Math.max(group.bestWeight, weight)
+    if (!set.isWarmup) group.bestWeight = Math.max(group.bestWeight, parseDecimal(set.actualWeight, 0))
     map.set(set.exerciseId, group)
   }
 
   return Array.from(map.values())
 }
 
-function formatWeight(value: number) {
-  const rounded = Math.round(value * 10) / 10
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
-}
-
-function toInteger(value: string, fallback: number) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : fallback
-}
-
-function toDecimal(value: string, fallback: number) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed * 10) / 10) : fallback
+function SetLabel({ set, index, sets, onToggleWarmup }: { set: WorkoutSetDraft; index: number; sets: WorkoutSetDraft[]; onToggleWarmup?: () => void }) {
+  const workingNumber = sets.slice(0, index + 1).filter((item) => !item.isWarmup).length
+  const label = set.isWarmup ? "热身" : `第 ${workingNumber} 组`
+  const content = (
+    <span className="flex flex-col leading-tight">
+      <span className={set.isWarmup ? "text-sm font-medium text-warning" : "text-sm text-muted-foreground"}>{label}</span>
+      {set.rpe ? <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">RPE {set.rpe}</span> : null}
+    </span>
+  )
+  if (!onToggleWarmup) return content
+  return (
+    <button type="button" className="rounded-xl py-1 text-left active:bg-muted/50" onClick={onToggleWarmup} aria-label={`${label}，点按切换热身`}>
+      {content}
+    </button>
+  )
 }

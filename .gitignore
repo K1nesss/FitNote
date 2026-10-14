@@ -10,3 +10,18 @@ dist
 *.tsbuildinfo
 .vite-dev*.log
 .wrangler-test*.log
+
+# Local backups (contain personal data)
+fitnote-backup*.sql
+fitnote-export*.json
+dev.log
+
+# Local git metadata copies
+.gitfixed
+.gitrepo*
+
+# Release archive and demo media (kept out of the repository)
+FitNote-source.zip
+*.zip
+fitnote-showcase*.mp4
+fitnote-showcase-voiceover.md

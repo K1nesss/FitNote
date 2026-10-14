@@ -1,15 +1,33 @@
+# FitNote — Cloudflare Workers config.
+#
+# This file is safe to share and to pull from upstream: it contains NO account-specific IDs.
+#  - The D1 database is located by binding/name. On the first `wrangler deploy` Cloudflare
+#    creates a database named "fitnote" (or reuses the one already bound to this Worker);
+#    later deploys keep using that same database, so your data is never replaced.
+#  - Your personal settings (passcode, time zone) live in the Cloudflare dashboard,
+#    not in this file, and `keep_vars` stops deploys from wiping them.
+#  - The schema migrates itself on the first request after each deploy (worker/db/runtime-schema.ts).
+#
+# See README.md → "部署与数据持久化".
+
 name = "fitnote"
 main = "worker/index.ts"
 compatibility_date = "2025-01-01"
+
+# Keep variables you add in the dashboard (e.g. DEFAULT_TIMEZONE) across deploys.
+# Secrets such as APP_PASSCODE are always kept.
+keep_vars = true
 
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
 binding = "ASSETS"
-run_worker_first = true
+run_worker_first = ["/api/*"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "fitnote"
-database_id = "09379969-4e48-423e-8ca9-1f8a1dac7fd5"
 migrations_dir = "worker/db/migrations"
+
+[observability]
+enabled = true

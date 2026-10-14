@@ -1,82 +1,80 @@
-import { Bell, ChevronRight, Database, Moon, Shield, UserRound } from "lucide-react"
+import { Bell, ChevronRight, Database, Lock, Moon, Sparkles, Target, UserRound } from "lucide-react"
 import { Link } from "react-router-dom"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LoadingState } from "@/components/ui/state"
+import { Card, CardContent } from "@/components/ui/card"
 import { useAppData } from "@/lib/app-data"
+import { formatNumber } from "@/lib/format"
 import { useTheme } from "@/lib/theme"
 
 export function ProfilePage() {
   const { theme } = useTheme()
-  const { data, loading } = useAppData()
+  const { data } = useAppData()
 
-  if (loading || !data) {
-    return <LoadingState title="个人" />
+  if (!data) {
+    return null
   }
 
-  const settings = [
-    { label: "目标", value: `${data.profile.goals.calories} kcal`, icon: UserRound, href: "/profile/settings/goals" },
-    {
-      label: "提醒",
-      value: data.settings.reminders.workout.enabled || data.settings.reminders.meal.enabled || data.settings.reminders.weekly.enabled ? "开启" : "关闭",
-      icon: Bell,
-      href: "/profile/settings/reminders",
-    },
-    { label: "外观", value: "theme", icon: Moon, href: "/profile/settings/appearance" },
-    { label: "数据", value: "D1", icon: Database, href: "/profile/settings/data" },
-    { label: "隐私", value: "仅自己", icon: Shield, href: "/profile/settings/privacy" },
+  const reminders = data.settings.reminders
+  const reminderCount = [reminders.workout.enabled, reminders.meal.enabled, reminders.weekly.enabled].filter(Boolean).length
+  const groups = [
+    [
+      {
+        label: "身体数据",
+        value: data.profile.heightCm && data.profile.weightKg ? `${formatNumber(data.profile.heightCm)}cm · ${formatNumber(data.profile.weightKg)}kg` : "未填写",
+        icon: UserRound,
+        href: "/profile/settings/profile",
+      },
+      { label: "营养目标", value: `${formatNumber(data.profile.goals.calories, 0)} kcal`, icon: Target, href: "/profile/settings/goals" },
+      { label: "AI 识别", value: data.settings.ai?.hasKey ? data.settings.ai.model : "未设置", icon: Sparkles, href: "/profile/settings/ai" },
+    ],
+    [
+      { label: "提醒", value: reminderCount ? `${reminderCount} 项开启` : "关闭", icon: Bell, href: "/profile/settings/reminders" },
+      { label: "外观", value: theme === "system" ? "跟随系统" : theme === "dark" ? "深色" : "浅色", icon: Moon, href: "/profile/settings/appearance" },
+    ],
+    [
+      { label: "数据与备份", value: "导出 / 恢复", icon: Database, href: "/profile/settings/data" },
+      { label: "访问保护", value: "", icon: Lock, href: "/profile/settings/privacy" },
+    ],
   ]
 
   return (
     <div className="space-y-5">
       <Card>
         <CardContent className="flex items-center gap-4 p-5">
-          <div className="liquid-control flex h-20 w-20 shrink-0 items-center justify-center rounded-[2rem]">
-            <span className="relative z-10 flex h-16 w-16 items-center justify-center rounded-[1.55rem] bg-primary text-2xl font-semibold text-primary-foreground">
-              {data.profile.name.slice(0, 1).toUpperCase()}
-            </span>
-          </div>
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.4rem] bg-primary text-2xl font-semibold text-primary-foreground">
+            {data.profile.name.slice(0, 1).toUpperCase()}
+          </span>
           <div className="min-w-0">
-            <h2 className="text-3xl font-semibold tracking-normal">{data.profile.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">FitNote</p>
+            <h2 className="truncate text-2xl font-bold">{data.profile.name}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              累计训练 {data.workoutHistory.length} 次 · 时区 {data.settings.timezone}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>设置</CardTitle>
-            <Badge>个人</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {settings.map((item) => (
-            <Link
-              key={item.label}
-              to={item.href}
-              className="flex w-full items-center justify-between gap-4 rounded-3xl bg-white/70 p-4 text-left transition active:scale-[0.99]"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted">
-                  <item.icon className="h-5 w-5" />
+      {groups.map((items, index) => (
+        <Card key={index}>
+          <CardContent className="divide-y divide-[var(--surface-border)] p-1.5">
+            {items.map((item) => (
+              <Link key={item.label} to={item.href} className="pressable flex items-center justify-between gap-3 rounded-[1.25rem] px-3 py-3">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                    <item.icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className="font-medium">{item.label}</span>
                 </span>
-                <span className="font-medium">{item.label}</span>
-              </span>
-              <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-                {item.value === "theme" ? (theme === "dark" ? "深色" : "浅色") : item.value}
-                <ChevronRight className="h-4 w-4" />
-              </span>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
+                <span className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+                  <span className="truncate">{item.value}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                </span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
 
-      <Button variant="quiet" className="w-full">
-        导出数据
-      </Button>
+      <p className="pb-2 text-center text-xs text-muted-foreground">FitNote · 数据保存在你自己的 Cloudflare D1 数据库</p>
     </div>
   )
 }

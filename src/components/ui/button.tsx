@@ -16,11 +16,13 @@ const buttonVariants = cva(
         quiet:
           "liquid-glass text-foreground hover:bg-card/60",
         ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+        danger: "bg-danger text-white shadow-[0_10px_20px_rgba(190,40,40,0.18)] hover:bg-danger/90",
+        "danger-ghost": "text-danger hover:bg-danger/10",
       },
       size: {
         default: "h-11 px-5",
         sm: "h-11 px-4 text-xs",
-        lg: "h-13 px-6 text-base",
+        lg: "h-14 px-6 text-base",
         icon: "h-11 w-11",
       },
     },

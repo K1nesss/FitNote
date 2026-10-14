@@ -16,7 +16,7 @@ export function LiquidNutritionBars({ trend, maxCalories, heightClassName = "h-3
         const waterTop = 160 - (height / 100) * 160
 
         return (
-          <div key={item.day} className="flex flex-1 flex-col items-center gap-2">
+          <div key={item.date ?? item.day} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
             <div className={`liquid-bar-track ${overTarget ? "is-over" : ""} ${heightClassName}`}>
               <svg className="liquid-bar-svg" viewBox="0 0 42 160" preserveAspectRatio="none" aria-hidden="true">
                 {height > 0 ? (
@@ -37,7 +37,8 @@ export function LiquidNutritionBars({ trend, maxCalories, heightClassName = "h-3
                 ) : null}
               </svg>
             </div>
-            <span className="text-xs text-muted-foreground">{item.day}</span>
+            <span className="text-[10px] font-medium tabular-nums text-muted-foreground">{item.calories > 0 ? Math.round(item.calories) : "–"}</span>
+            <span className="-mt-1 text-xs font-medium">{item.day}</span>
           </div>
         )
       })}

@@ -1,11 +1,15 @@
 import { spawn } from "node:child_process"
 
+// Ports can be overridden so FitNote can run next to other local projects.
+const apiPort = process.env.FITNOTE_API_PORT ?? "8787"
+const webPort = process.env.FITNOTE_WEB_PORT ?? "5173"
+
 const processes = [
-  spawn("npx wrangler dev --config wrangler.test.toml --port 8787 --ip 127.0.0.1", {
+  spawn(`npx wrangler dev --config wrangler.test.toml --port ${apiPort} --ip 127.0.0.1`, {
     stdio: "inherit",
     shell: true,
   }),
-  spawn("npx vite --host 127.0.0.1 --port 5173", {
+  spawn(`npx vite --host 127.0.0.1 --port ${webPort} --strictPort`, {
     stdio: "inherit",
     shell: true,
   }),

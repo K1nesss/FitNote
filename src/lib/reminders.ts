@@ -18,7 +18,7 @@ export function useReminderScheduler(reminders: ReminderSettings | null | undefi
       const now = new Date()
       const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
       const weekday = now.getDay() === 0 ? 7 : now.getDay()
-      const dateKey = now.toISOString().slice(0, 10)
+      const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
 
       if (reminders.workout.enabled && reminders.workout.time === currentTime) {
         notifyOnce(`workout-${dateKey}`, "训练", "开始今天的训练。")
@@ -59,9 +59,18 @@ function notifyOnce(key: string, title: string, body: string) {
     return
   }
 
-  new Notification(title, { body, tag: key })
-  const next = [...fired.slice(-20), key]
-  localStorage.setItem(firedKey, JSON.stringify(next))
+  try {
+    new Notification(title, { body, tag: key, icon: "/icon.svg" })
+  } catch {
+    // Some mobile browsers only allow notifications from a service worker.
+    void navigator.serviceWorker?.ready.then((registration) => registration.showNotification(title, { body, tag: key, icon: "/icon.svg" }))
+  }
+
+  try {
+    localStorage.setItem(firedKey, JSON.stringify([...fired.slice(-20), key]))
+  } catch {
+    // ignore
+  }
 }
 
 function readFired() {

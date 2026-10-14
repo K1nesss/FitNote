@@ -1,189 +1,129 @@
-import { Activity, ArrowRight, Dumbbell, Flame, UserRound } from "lucide-react"
-import type { ComponentProps } from "react"
-import { useEffect, useState } from "react"
+import { ArrowRight } from "lucide-react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Field, InputWithSuffix, SectionHeader } from "@/components/ui/controls"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/toast"
 import { useAppData } from "@/lib/app-data"
-
-const steps = [
-  { label: "资料", icon: UserRound },
-  { label: "目标", icon: Flame },
-  { label: "训练", icon: Dumbbell },
-  { label: "完成", icon: Activity },
-]
+import { parseDecimal } from "@/lib/format"
+import { useSubmitLock } from "@/lib/use-submit-lock"
 
 export function OnboardingPage() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const { data, saveProfile } = useAppData()
-  const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState({
-    name: "Sean",
-    height: "",
-    weight: "",
-    calories: "2200",
-    protein: "150",
-    carbs: "240",
-    fat: "70",
-    days: "4 天",
-  })
+  const saveSubmit = useSubmitLock()
+  // Initialise once from saved data; later data refreshes must not overwrite what the user is typing.
+  const [form, setForm] = useState(() => ({
+    name: data?.profile.name && data.profile.name !== "我" ? data.profile.name : "",
+    height: data?.profile.heightCm ? String(data.profile.heightCm) : "",
+    weight: data?.profile.weightKg ? String(data.profile.weightKg) : "",
+    calories: String(data?.profile.goals.calories ?? 2200),
+    protein: String(data?.profile.goals.protein ?? 150),
+    carbs: String(data?.profile.goals.carbs ?? 240),
+    fat: String(data?.profile.goals.fat ?? 70),
+  }))
+  const height = parseDecimal(form.height, 0, 1)
+  const weight = parseDecimal(form.weight, 0, 1)
+  const ready = height > 0 && weight > 0
 
-  useEffect(() => {
-    if (data) {
-      setProfile((current) => ({
-        ...current,
-        name: data.profile.name,
-        height: data.profile.heightCm ? String(data.profile.heightCm) : current.height,
-        weight: data.profile.weightKg ? String(data.profile.weightKg) : current.weight,
-        calories: String(data.profile.goals.calories),
-        protein: String(data.profile.goals.protein),
-        carbs: String(data.profile.goals.carbs),
-        fat: String(data.profile.goals.fat),
-      }))
-    }
-  }, [data])
+  function set<K extends keyof typeof form>(key: K, value: string) {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
 
   async function finish() {
-    setSaving(true)
-
-    try {
-      await saveProfile({
-        name: profile.name,
-        heightCm: Number(profile.height) || null,
-        weightKg: Number(profile.weight) || null,
-        goals: {
-          calories: Number(profile.calories) || 2200,
-          protein: Number(profile.protein) || 150,
-          carbs: Number(profile.carbs) || 240,
-          fat: Number(profile.fat) || 70,
-        },
-      })
-      showToast({ title: "已保存" })
-      navigate("/workout/plan", { replace: true })
-    } catch {
-      showToast({ title: "保存失败", description: "检查本地 Worker 是否启动。" })
-    } finally {
-      setSaving(false)
+    if (!ready) {
+      showToast({ title: "请填写身高和体重", tone: "error" })
+      return
     }
+
+    await saveSubmit.run(async () => {
+      let timezone: string | undefined
+      try {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined
+      } catch {
+        timezone = undefined
+      }
+      await saveProfile({
+        name: form.name.trim() || "我",
+        heightCm: height,
+        weightKg: weight,
+        goals: {
+          calories: parseDecimal(form.calories) || 2200,
+          protein: parseDecimal(form.protein) || 150,
+          carbs: parseDecimal(form.carbs) || 240,
+          fat: parseDecimal(form.fat) || 70,
+        },
+        timezone,
+      })
+      showToast({ title: "设置完成", description: "接下来安排每周的训练计划。" })
+      navigate("/workout/plan", { replace: true })
+    })
   }
 
   return (
     <div className="space-y-5">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-3xl">开始</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-4 gap-2">
-            {steps.map((step, index) => (
-              <div key={step.label} className="rounded-3xl bg-white/70 p-3 text-center">
-                <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-2xl bg-muted">
-                  <step.icon className="h-4 w-4" />
-                </div>
-                <p className="text-xs text-muted-foreground">{index + 1}</p>
-              </div>
-            ))}
-          </div>
-          <Input placeholder="昵称" value={profile.name} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))} />
-          <div className="grid grid-cols-2 gap-3">
-            <InputWithSuffix
-              suffix="cm"
-              placeholder="身高"
-              inputMode="numeric"
-              value={profile.height}
-              onChange={(event) => setProfile((current) => ({ ...current, height: event.target.value }))}
-            />
-            <InputWithSuffix
-              suffix="kg"
-              placeholder="体重"
-              inputMode="decimal"
-              value={profile.weight}
-              onChange={(event) => setProfile((current) => ({ ...current, weight: event.target.value }))}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <p className="px-1 text-sm text-muted-foreground">只需填写一次，之后可在「我的」中修改。数据保存在你自己的 Cloudflare 数据库中。</p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>营养目标</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <InputWithSuffix
-            suffix="kcal"
-            placeholder="每日热量"
-            value={profile.calories}
-            inputMode="numeric"
-            onChange={(event) => setProfile((current) => ({ ...current, calories: event.target.value }))}
-          />
-          <div className="grid grid-cols-3 gap-2">
-            <InputWithSuffix
-              suffix="蛋白 g"
-              placeholder="P"
-              value={profile.protein}
-              inputMode="numeric"
-              onChange={(event) => setProfile((current) => ({ ...current, protein: event.target.value }))}
-            />
-            <InputWithSuffix
-              suffix="碳水 g"
-              placeholder="C"
-              value={profile.carbs}
-              inputMode="numeric"
-              onChange={(event) => setProfile((current) => ({ ...current, carbs: event.target.value }))}
-            />
-            <InputWithSuffix
-              suffix="脂肪 g"
-              placeholder="F"
-              value={profile.fat}
-              inputMode="numeric"
-              onChange={(event) => setProfile((current) => ({ ...current, fat: event.target.value }))}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <SectionHeader title="关于你" />
+        <Card>
+          <CardContent className="space-y-3 p-5">
+            <Field label="昵称">
+              <Input placeholder="怎么称呼你" value={form.name} maxLength={40} onChange={(event) => set("name", event.target.value)} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="身高">
+                <InputWithSuffix suffix="cm" placeholder="175" inputMode="decimal" value={form.height} onChange={(event) => set("height", event.target.value)} />
+              </Field>
+              <Field label="体重">
+                <InputWithSuffix suffix="kg" placeholder="70" inputMode="decimal" value={form.weight} onChange={(event) => set("weight", event.target.value)} />
+              </Field>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>训练偏好</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-2">
-          {["3 天", "4 天", "5 天"].map((item) => (
-            <button
-              key={item}
-              className={`h-14 rounded-3xl font-medium transition active:scale-95 ${
-                profile.days === item ? "bg-primary text-primary-foreground" : "bg-white/70"
-              }`}
-              onClick={() => setProfile((current) => ({ ...current, days: item }))}
-            >
-              {item}
-            </button>
-          ))}
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <SectionHeader title="每日营养目标" />
+        <Card>
+          <CardContent className="space-y-3 p-5">
+            <Field label="热量">
+              <InputWithSuffix suffix="kcal" inputMode="numeric" value={form.calories} onChange={(event) => set("calories", event.target.value)} />
+            </Field>
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="蛋白质">
+                <InputWithSuffix suffix="g" inputMode="numeric" value={form.protein} onChange={(event) => set("protein", event.target.value)} />
+              </Field>
+              <Field label="碳水">
+                <InputWithSuffix suffix="g" inputMode="numeric" value={form.carbs} onChange={(event) => set("carbs", event.target.value)} />
+              </Field>
+              <Field label="脂肪">
+                <InputWithSuffix suffix="g" inputMode="numeric" value={form.fat} onChange={(event) => set("fat", event.target.value)} />
+              </Field>
+            </div>
+            {weight > 0 ? (
+              <button
+                type="button"
+                className="w-full rounded-2xl bg-muted/45 px-4 py-3 text-left text-sm text-muted-foreground"
+                onClick={() => setForm((current) => ({ ...current, protein: String(Math.round(weight * 2)) }))}
+              >
+                参考：增肌期蛋白质约 2 g/kg，即 <span className="font-semibold text-primary">{Math.round(weight * 2)} g</span>（点此填入）
+              </button>
+            ) : null}
+          </CardContent>
+        </Card>
+      </section>
 
-      <Button className="w-full rounded-3xl" size="lg" onClick={finish} disabled={saving}>
-        {saving ? "保存中" : "完成"}
-        <ArrowRight className="h-5 w-5" />
-      </Button>
-    </div>
-  )
-}
-
-type InputWithSuffixProps = ComponentProps<typeof Input> & {
-  suffix: string
-}
-
-function InputWithSuffix({ suffix, className, ...props }: InputWithSuffixProps) {
-  return (
-    <div className="relative">
-      <Input className={`pr-16 ${className ?? ""}`} {...props} />
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-        {suffix}
-      </span>
+      <div className="sticky-actions">
+        <Button className="w-full" size="lg" onClick={finish} disabled={saveSubmit.pending || !ready}>
+          {saveSubmit.pending ? "保存中…" : "完成"}
+          <ArrowRight className="h-5 w-5" />
+        </Button>
+      </div>
     </div>
   )
 }
